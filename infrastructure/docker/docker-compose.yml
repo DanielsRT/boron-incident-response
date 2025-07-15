@@ -45,7 +45,7 @@ services:
     container_name: logstash
     restart: unless-stopped
     volumes:
-      - ./logstash/pipeline:/usr/shar/logstash/pipeline
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
     environment:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
       - xpack.monitoring.enabled=true
@@ -113,3 +113,10 @@ services:
     depends_on:
       - redis
       - elasticsearch
+
+volumes:
+  es_data:
+
+networks:
+  elk:
+    driver: bridge

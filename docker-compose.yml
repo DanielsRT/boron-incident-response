@@ -1,0 +1,97 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    container_name: elasticsearch
+    restart: unless-stopped
+    volumes:
+      - esdata:/usr/share/elasticsearch/data/
+    environment:
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - node.name=soc-ingest-node
+      - cluster.name=soc-ingest-cluster
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=${ELASTIC_SECURITY}
+      - xpack.security.transport.ssl.enabled=${ELASTIC_SSL}
+    env_file:
+      - ./envs/dev.env
+    ports:
+      - '9200:9200'
+      #- '9300:9300'
+    depends_on:
+      - redis
+    networks:
+      - elk
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION}
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    env_file:
+      - ./envs/dev.env
+    ports:
+      - '5601:5601'
+    depends_on:
+      - redis
+      - elasticsearch
+    networks:
+      - elk
+
+  logstash:
+    image: logstash:9.0.3
+    container_name: logstash
+    restart: unless-stopped
+    volumes:
+      - ./logstash/pipeline:/usr/shar/logstash/pipeline
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+      - xpack.monitoring.enabled=true
+      - xpack.monitoring.elasticsearch.username=elastic
+      - xpack.monitoring.elasticsearch.password=${ELASTIC_PASSWORD}
+      - xpack.monitoring.collection.interval=10s
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    env_file:
+      - ./envs/dev.env
+    depends_on:
+      - redis
+      - elasticsearch
+    networks:
+      - elk
+    ports:
+      - "5000:5000"    # TCP input
+      - "5044:5044"    # Beats input
+      - "9600:9600"    # Logstash monitoring API
+
+  redis:
+    image: redis:8.2-rc1-bookworm
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile
+    image: boron_celery_worker
+    command: /start-celeryworker
+    volumes:
+      - .:/app
+    env_file:
+      - ./envs/dev.env
+    depends_on:
+      - redis
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: ./infrastructure/docker/Dockerfile
+    image: boron_celery_beat
+    command: /start-celerybeat
+    volumes:
+      - .:/app
+    env_file:
+      - ./envs/dev.env
+    depends_on:
+      - redis

@@ -1,1 +1,4 @@
 __pycache__
+.venv
+api_token.py
+envs

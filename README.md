@@ -5,8 +5,7 @@ A full-stack Python and React web app capable of querying security events throug
 ## Project Structure
 
 ```
-soc-dashboard/
->>>>>>> 8408f40324398bc669ce725473a4f8eac249075d
+boron-incident-response/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI entrypoint

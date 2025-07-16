@@ -14,6 +14,7 @@ class BaseConfig:
     TENANT_ID: str = os.environ.get("TENANT_ID", "NO_TENANT_ID")
     CLIENT_ID: str = os.environ.get("CLIENT_ID", "NO_CLIENT_ID")
     CLIENT_SECRET: str = os.environ.get("CLIENT_SECRET", "NO_CLIENT_SECRET")
+    WORKSPACE_ID: str = os.environ.get("WORKSPACE_ID", "LOCALHOST")
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True

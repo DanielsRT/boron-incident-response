@@ -1,9 +1,12 @@
 # BORON-INCIDENT-RESPONSE
 
+A full-stack Python and React web app capable of querying security events through Azure API or optionally parsing through file logs. This application uses Logstash as a data processing pipeline to Elasticsearch and Kibana to sort and visualize security events to a web-based Incident Response Dashboard
+
 ## Project Structure
 
 ```
-boron-incident-response/
+soc-dashboard/
+>>>>>>> 8408f40324398bc669ce725473a4f8eac249075d
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                     # FastAPI entrypoint

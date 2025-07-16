@@ -11,8 +11,13 @@ class BaseConfig:
     CELERY_BROKER_URL: str = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")
     CELERY_RESULT_BACKEND: str = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
 
+    TENANT_ID: str = os.environ.get("TENANT_ID", "NO_TENANT_ID")
+    CLIENT_ID: str = os.environ.get("CLIENT_ID", "NO_CLIENT_ID")
+    CLIENT_SECRET: str = os.environ.get("CLIENT_SECRET", "NO_CLIENT_SECRET")
+
 class DevelopmentConfig(BaseConfig):
-    pass
+    DEBUG = True
+    TESTING = True
 
 class ProductionConfig(BaseConfig):
     pass

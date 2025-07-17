@@ -1,3 +1,12 @@
+x-build-args: &common-build-args
+  args:
+    ELASTIC_VERSION: ${ELASTIC_VERSION}
+    ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST}
+    ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN: ${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
+    ELASTIC_SECURITY: ${ELASTIC_SECURITY}
+    ELASTIC_SSL: ${ELASTIC_SSL}
+
+
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
@@ -28,8 +37,7 @@ services:
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOST}
-      - ELASTICSEARCH_USERNAME=${ELASTIC_USERNAME}
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
     env_file:
       - dev.env
     ports:
@@ -53,8 +61,7 @@ services:
       - xpack.monitoring.elasticsearch.password=${ELASTIC_PASSWORD}
       - xpack.monitoring.collection.interval=10s
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
-      - ELASTICSEARCH_USERNAME=${ELASTIC_USERNAME}
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
     env_file:
       - dev.env
     depends_on:
@@ -72,8 +79,9 @@ services:
 
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
+      <<: *common-build-args
     image: boron_celery_web
     command: /start
     volumes:
@@ -85,37 +93,42 @@ services:
     depends_on:
       - redis
       - elasticsearch
+      - logstash
 
   celery_worker:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
+      <<: *common-build-args
     image: boron_celery_worker
     command: /start-celeryworker
     volumes:
-      - ../backend:/app
+      - .:/app
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
+      - logstash
 
   celery_beat:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
+      <<: *common-build-args
     image: boron_celery_beat
     command: /start-celerybeat
     volumes:
-      - ../backend:/app
+      - .:/app
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
+      - logstash
 
 volumes:
-  es_data:
+  esdata:
 
 networks:
   elk:

@@ -65,8 +65,8 @@ def flatten_response(response_json) -> List[Dict[str, Any]]:
             
     return all_logs
 
-def send_logs_to_logstash(logs):
+def send_azure_logs_to_logstash(logs):
     with socket.create_connection(("logstash", 5000)) as sock:
         for entry in logs:
-            line = json.dumps(entry)+"\n"
+            line = json.dumps(entry, default=str)+"\n"
             sock.sendall(line.encode("utf-8"))

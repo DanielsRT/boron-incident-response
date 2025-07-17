@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from celery import current_app as current_celery_app
 
 from app.core.config import settings
-from features.log.service import fetch_all_security_logs, send_logs_to_logstash
+from features.log.service import fetch_all_security_logs, send_azure_logs_to_logstash
 
 def create_celery():
     celery_app = current_celery_app
@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     # --- STARTUP ---
     security_logs = fetch_all_security_logs
     
-    send_logs_to_logstash(security_logs)
+    send_azure_logs_to_logstash(security_logs)
     yield
     # --- SHUTDOWN (optional) ---
     print("[Shutdown] FastAPI application is shutting down")

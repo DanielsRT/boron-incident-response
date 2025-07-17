@@ -1,11 +1,13 @@
 import time
 import httpx
+import socket
+import json
 from azure.identity import ClientSecretCredential
 from fastapi import HTTPException
+from typing import Any, List, Dict
 
 from core.config import settings
 from log import log_router
-from log.model import QueryRequest
 
 
 _token_cache = {
@@ -34,24 +36,37 @@ def get_access_token() -> str:
 
     return _token_cache["access_token"]
 
-@log_router.post("query-logs")
-async def query_logs(request: QueryRequest):
+def fetch_all_security_logs() -> List[Dict[str, Any]]:
+    """Fetch all security events from Azure Log Analytics and returns a flat list of dicts"""
     token = get_access_token()
-    url = f"https://api.loganalytics.azure.com/v1/workspaces/{settings.WORKSPACE_ID}/query"
+    url = f"https://api.loganalytics.io/v1/workspaces/{settings.WORKSPACE_ID}/query"
     headers = {
-        "Authorization" : f"Bearer {token}",
-        "Content-Type" : "application/json"
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
+    body = {"query": "SecurityEvents"}
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json={"query": request.kql})
+    resp = httpx.post(url, headers=headers, json=body, timeout=60)
+    resp.raise_for_status()
+    data = resp.json()
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail=response.text)
-    
-    return format_azure_log_response(response.json())
+    return flatten_response(data)
 
+def flatten_response(response_json) -> List[Dict[str, Any]]:
+    table = response_json.get("tables", [])
 
-def format_azure_log_response(response_json):
+    all_logs = []
+    for table in response_json["tables"]:
+        columns = [col["name"] for col in table["columns"]]
+        for row in table["rows"]:
+            entry = dict(zip(columns, row))
+            entry["_table"] = table.get("name", "unknown")
+            all_logs.append(entry)
+            
+    return all_logs
 
-    return {}
+def send_logs_to_logstash(logs):
+    with socket.create_connection(("logstash", 5000)) as sock:
+        for entry in logs:
+            line = json.dumps(entry)+"\n"
+            sock.sendall(line.encode("utf-8"))

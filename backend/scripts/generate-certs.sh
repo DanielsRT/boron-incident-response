@@ -1,9 +1,5 @@
-#!/usr/bin/env bash
-# scripts/generate-selfsigned-cert.sh
-# Generates a self-signed TLS certificate and private key in the current directory.
-# The cert and key are output to ./tls/{cert.pem,key.pem}
-
-set -euo pipefail
+#!/bin/bash
+set -e
 
 # Trap errors and pause
 trap 'echo "\nError at line $LINENO: $BASH_COMMAND. Press ENTER to exit..."; read -r' ERR
@@ -11,41 +7,68 @@ trap 'echo "\nError at line $LINENO: $BASH_COMMAND. Press ENTER to exit..."; rea
 disable_autoclose_prompt() {
   echo "$1"
   echo "Press ENTER to exit..."
-  read -r
+  read 
 }
 
-# Output directory for cert and key
-OUTPUT_DIR="tls"
-mkdir -p "$OUTPUT_DIR"
+mkdir -p tls
 
-# Determine Common Name (CN) for certificate
-COMMON_NAME=${1:-"localhost"}
+# Generate openssl.cnf with SANs for localhost and elasticsearch
+cat > openssl.cnf <<EOF
+[ req ]
+default_bits       = 2048
+prompt             = no
+distinguished_name = req_distinguished_name
+x509_extensions    = v3_req
 
-# Validity period in days (optional second argument)
-DAYS_VALID=${2:-3650}
-KEY_FILE="$OUTPUT_DIR/key.pem"
-CERT_FILE="$OUTPUT_DIR/cert.pem"
+[ req_distinguished_name ]
+CN = localhost
 
-echo "Generating self-signed certificate for CN=$COMMON_NAME, valid for $DAYS_VALID days..."
+[ v3_req ]
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
 
-# Generate certificate and key
-# Use double-slash for -subj to avoid MSYS interpreting it as a filesystem path
+[ alt_names ]
+DNS.1 = localhost
+DNS.2 = elasticsearch
+DNS.3 = kibana
+DNS.4 = logstash
+IP.1  = 127.0.0.1
+IP.2 = 172.18.0.2
+EOF
+
 openssl req -x509 -nodes -newkey rsa:2048 \
-  -keyout "$KEY_FILE" \
-  -out "$CERT_FILE" \
-  -days "$DAYS_VALID" \
-  -subj "//CN=$COMMON_NAME"
+  -keyout tls/ca.key \
+  -out tls/ca.crt \
+  -days 3650 \
+  -subj '//CN=MyRootCA'
+
+openssl req -nodes -newkey rsa:2048 \
+  -keyout tls/server.key \
+  -out tls/server.csr \
+  -config openssl.cnf
+
+openssl x509 -req -in tls/server.csr \
+  -CA tls/ca.crt -CAkey tls/ca.key -CAcreateserial \
+  -out tls/server.crt \
+  -days 3650 \
+  -extfile openssl.cnf \
+  -extensions v3_req
+
+rm tls/server.csr tls/ca.srl openssl.cnf
+
+echo "Certificates generated in tls/"
+ls -l tls/
+
 
 cat <<EOF
 
-Self-signed certificate generation complete:
-  Private key: $KEY_FILE
-  Certificate: $CERT_FILE
-
 You can now mount these files into your Elasticsearch or Kibana containers:
   volumes:
-    - ./tls/cert.pem:/usr/share/elasticsearch/config/certs/cert.pem:ro
-    - ./tls/key.pem:/usr/share/elasticsearch/config/certs/key.pem:ro
+    - ./tls/ca.crt:/usr/share/elasticsearch/config/certs/ca.crt:ro
+    - ./tls/ca.key:/usr/share/elasticsearch/config/certs/ca.key:ro
+    - ./tls/server.crt:/usr/share/elasticsearch/config/certs/server.crt:ro
+    - ./tls/server.key:/usr/share/elasticsearch/config/certs/server.key:ro
 EOF
 
 disable_autoclose_prompt "Done."

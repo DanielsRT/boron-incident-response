@@ -1,13 +1,6 @@
-x-build-args: &common-build-args
-  args:
-    ELASTIC_VERSION: ${ELASTIC_VERSION}
-    ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST}
-    ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN: ${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
-    ELASTIC_SECURITY: ${ELASTIC_SECURITY}
-
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
     container_name: elasticsearch
     restart: unless-stopped
     volumes:
@@ -24,13 +17,13 @@ services:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - network.host=0.0.0.0
       # HTTP TLS (you already have these)
-      - xpack.security.http.ssl.enabled=${ELASTIC_SECURITY}
+      - xpack.security.http.ssl.enabled=true
       - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/server.key
       - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/server.crt
       - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
 
       # TRANSPORT TLS (required for cluster node communication & security)
-      - xpack.security.transport.ssl.enabled=${ELASTIC_SECURITY}
+      - xpack.security.transport.ssl.enabled=true
       - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/server.key
       - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/server.crt
       - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
@@ -45,17 +38,17 @@ services:
       - elk
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION}
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION}
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
       - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
-      - XPACK_SECURITY_ENABLED=${ELASTIC_SECURITY}
-      - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=FuB5Vtl5-HdzM*udfD7J
+      - XPACK_SECURITY_ENABLED=true
+      - ELASTICSEARCH_USERNAME=${KIBANA_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt
       - ELASTICSEARCH_SSL_VERIFICATIONMODE=full
-      - SERVER_SSL_ENABLED=${ELASTIC_SECURITY}
+      - SERVER_SSL_ENABLED=true
       - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/server.crt
       - SERVER_SSL_KEY=/usr/share/kibana/config/certs/server.key
     volumes:
@@ -73,7 +66,7 @@ services:
       - elk
 
   logstash:
-    image: logstash:9.0.3
+    image: logstash:${ELK_VERSION}
     container_name: logstash
     restart: unless-stopped
     volumes:
@@ -85,8 +78,8 @@ services:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
       - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
-      - ELASTICSEARCH_USERNAME=logstash_internal
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_USERNAME=${LOGSTASH_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_PASSWORD}
       - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/logstash/config/certs/ca.crt
       - ELASTICSEARCH_SSL_ENABLED=true
     env_file:
@@ -108,7 +101,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_web
     command: /start
     volumes:
@@ -126,7 +118,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_worker
     command: /start-celeryworker
     volumes:
@@ -142,7 +133,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_beat
     command: /start-celerybeat
     volumes:

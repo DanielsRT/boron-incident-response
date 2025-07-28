@@ -18,15 +18,23 @@ cat > openssl.cnf <<EOF
 default_bits       = 2048
 prompt             = no
 distinguished_name = req_distinguished_name
-x509_extensions    = v3_req
+x509_extensions    = v3_ca
 
 [ req_distinguished_name ]
 CN = localhost
+
+[ v3_ca ]
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
 
 [ v3_req ]
 keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
 
 [ alt_names ]
 DNS.1 = localhost
@@ -41,12 +49,15 @@ openssl req -x509 -nodes -newkey rsa:2048 \
   -keyout tls/ca.key \
   -out tls/ca.crt \
   -days 3650 \
-  -subj '//CN=MyRootCA'
+  -subj '//CN=MyRootCA' \
+  -config openssl.cnf \
+  -extensions v3_ca
 
 openssl req -nodes -newkey rsa:2048 \
   -keyout tls/server.key \
   -out tls/server.csr \
-  -config openssl.cnf
+  -config openssl.cnf \
+  -extensions v3_req
 
 openssl x509 -req -in tls/server.csr \
   -CA tls/ca.crt -CAkey tls/ca.key -CAcreateserial \

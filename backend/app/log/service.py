@@ -1,6 +1,7 @@
 import time
 import httpx
 import socket
+import ssl
 import json
 import logging
 import sys
@@ -83,8 +84,21 @@ def flatten_response(response_json) -> List[Dict[str, Any]]:
     return all_logs
 
 def send_azure_logs_to_logstash(logs):
-    print("Sending Azure logs to logstash...")
+    print("Sending Azure logs to Logstash...")
+
+    # Create SSL context with your CA cert to verify Logstash's server certificate
+    context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile="/app/certs/ca.crt")
+    
+    # Optional: require certificate verification and hostname checking
+    context.check_hostname = True
+    context.verify_mode = ssl.CERT_REQUIRED
+
+    # Connect to Logstash over TCP
     with socket.create_connection(("logstash", 5000)) as sock:
-        for entry in logs:
-            line = json.dumps(entry, default=str)+"\n"
-            sock.sendall(line.encode("utf-8"))
+        # Wrap socket with SSL; server_hostname must match Logstash cert SAN (e.g. "logstash")
+        with context.wrap_socket(sock, server_hostname="logstash") as ssl_sock:
+            for entry in logs:
+                line = json.dumps(entry, default=str) + "\n"
+                ssl_sock.sendall(line.encode("utf-8"))
+
+    print("Finished sending logs.")

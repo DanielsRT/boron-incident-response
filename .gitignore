@@ -4,3 +4,4 @@ api_token.py
 *.env
 celerybeat*
 tls
+certs

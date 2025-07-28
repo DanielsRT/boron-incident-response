@@ -9,9 +9,11 @@ set -o nounset
 
 # Wait for Elasticsearch
 echo "Waiting for Elasticsearch..."
-until curl -s http://elasticsearch:9200 > /dev/null; do
+until curl -s --insecure https://elasticsearch:9200 >/dev/null; do
+  echo "Still waiting..."
   sleep 2
 done
+echo "Elasticsearch is running!"
 
 # used to make the entrypoint a pass through to ensure that Docker 
 # runs the command the user passes in (command: /start, in our case)

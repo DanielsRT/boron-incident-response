@@ -96,6 +96,8 @@ services:
 
   redis:
     image: redis:8.2-rc1-bookworm
+    networks:
+      - elk
 
   backend:
     build:
@@ -113,6 +115,8 @@ services:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
 
   celery_worker:
     build:
@@ -128,6 +132,8 @@ services:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
 
   celery_beat:
     build:
@@ -143,6 +149,8 @@ services:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
 
 volumes:
   esdata:

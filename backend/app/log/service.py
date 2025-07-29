@@ -5,8 +5,10 @@ import ssl
 import json
 import logging
 import sys
+import redis
 from azure.identity import ClientSecretCredential
 from typing import Any, List, Dict
+from datetime import datetime, timedelta, timezone
 
 from app.core.config import settings
 from app.log import log_router
@@ -25,6 +27,11 @@ _token_cache = {
     "expires_at": 0
 }
 
+REDIS_KEY = "azure:last_fetch_time"
+QUERY_TEMPLATE = "SecurityEvent | where TimeGenerated > datetime('{}')"
+
+# Connect to Redis (adjust host/port/db as needed)
+redis_client = redis.Redis(host="redis", port=6379, decode_responses=True)
 
 def token_expired() -> bool:
     """Returns True if token is missing or expired."""
@@ -46,17 +53,29 @@ def get_access_token() -> str:
 
     return _token_cache["access_token"]
 
+def get_last_fetch_time() -> datetime:
+    value = redis_client.get(REDIS_KEY)
+    if value:
+        return datetime.fromisoformat(str(value))
+    # Default to 1 hour ago if no value
+    return datetime.now(timezone.utc) - timedelta(hours=1)
+
+def save_last_fetch_time(timestamp: datetime):
+    redis_client.set(REDIS_KEY, timestamp.isoformat())
+
 def fetch_all_security_logs() -> List[Dict[str, Any]]:
     """Fetch all security events from Azure Log Analytics and returns a flat list of dicts"""
     logger.info("Getting access token...")
     try:
         token = get_access_token()
+        last_fetch_time = get_last_fetch_time().isoformat()
+
         url = f"https://api.loganalytics.io/v1/workspaces/{settings.WORKSPACE_ID}/query"
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
-        body = {"query": "SecurityEvent | where TimeGenerated >= ago(30d) | sort by TimeGenerated desc"}
+        body = {"query": QUERY_TEMPLATE.format(last_fetch_time)}
 
     
         resp = httpx.post(url, headers=headers, json=body, timeout=60)

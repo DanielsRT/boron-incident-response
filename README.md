@@ -1,6 +1,35 @@
-# BORON-INCIDENT-RESPONSE
+# Security Incident Response Dashboard
 
-A full-stack Python and React web app capable of querying security events through Azure API or optionally parsing through file logs. This application uses Logstash as a data processing pipeline to Elasticsearch and Kibana to sort and visualize security events to a web-based Incident Response Dashboard
+A comprehensive security incident response system built with ELK Stack, Python FastAPI backend, and React frontend. This system fetches security events from Azure Log Analytics, processes them through Logstash to Elasticsearch, and provides a real-time dashboard for security analysts to monitor and respond to incidents.
+
+## Architecture
+
+```
+Azure Log Analytics → Python Backend → Logstash → Elasticsearch → React Dashboard
+                           ↓
+                        Redis Cache
+```
+
+## Features
+
+### Backend Features
+- **Azure Integration**: Fetches SecurityEvent logs from Azure Log Analytics
+- **Real-time Processing**: Celery-based background task processing
+- **Alert Engine**: Configurable rule-based alert generation with multiple detection rules
+- **REST API**: FastAPI-based API for frontend integration
+- **Caching**: Redis-based caching for improved performance
+
+### Frontend Features
+- **Modern Dashboard**: React + Tailwind CSS responsive dashboard
+- **Real-time Updates**: Auto-refreshing alert feed
+- **Advanced Filtering**: Filter alerts by severity, status, and search terms
+- **Alert Management**: View detailed alert information and statistics
+- **Responsive Design**: Works on desktop and mobile devices
+
+### Alert Rules Implemented
+1. **Multiple Failed Logins**: Detects multiple failed login attempts from the same IP
+2. **Privilege Escalation**: Monitors for users being added to privileged groups
+3. **Suspicious Process Activity**: Alerts on execution of potentially malicious processes
 
 ## Project Structure
 

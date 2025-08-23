@@ -109,13 +109,27 @@ services:
       - .:/app
       - ./tls/ca.crt:/app/certs/ca.crt:ro
     ports:
-      - 8010:8000
+      - 8000:8000
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: boron_security_frontend
+    ports:
+      - 3000:3000
+    env_file:
+      - dev.env
+    depends_on:
+      - backend
     networks:
       - elk
 

@@ -16,6 +16,11 @@ class BaseConfig:
     CLIENT_SECRET: str = os.environ.get("CLIENT_SECRET", "NO_CLIENT_SECRET")
     WORKSPACE_ID: str = os.environ.get("WORKSPACE_ID", "LOCALHOST")
 
+    ELASTIC_PASSWORD: str = os.environ.get("ELASTIC_PASSWORD", "")
+    ELASTIC_USERNAME: str = os.environ.get("ELASTIC_USERNAME", "elastic")
+    ELASTICSEARCH_HOST: str = os.environ.get("ELASTICSEARCH_HOST", "http://localhost:9200")
+    APP_CERT_PATH: str = os.environ.get("APP_CERT_PATH", "")
+
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
     TESTING = True

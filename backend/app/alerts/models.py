@@ -3,6 +3,9 @@ from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from enum import Enum
 
+import logging
+logger = logging.getLogger(__name__)
+
 class AlertSeverity(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
@@ -70,46 +73,89 @@ class MultipleFailedLoginsRule(AlertRule):
         
         # Group events by source IP and filter for logon failures
         failed_logins = {}
-        current_time = datetime.now(timezone.utc)
         
         for event in events:
-            if (event.get("EventID") == 4625 and  # Failed logon
+            if (event.get("event", {}).get("id") == 4625 and  # Failed logon
                 event.get("@timestamp")):
                 
                 try:
-                    event_time = datetime.fromisoformat(event["@timestamp"].replace('Z', '+00:00'))
-                    # Only consider events within time window
-                    if (current_time - event_time).total_seconds() <= self.time_window_minutes * 60:
-                        source_ip = event.get("IpAddress", "Unknown")
-                        target_user = event.get("TargetUserName", "Unknown")
+                    source_ip = event.get("source", {}).get("ip")
+                    target_user = event.get("TargetUserName", "Unknown")
                         
-                        key = (source_ip, target_user)
-                        if key not in failed_logins:
-                            failed_logins[key] = []
-                        failed_logins[key].append(event)
+                    key = (source_ip, target_user)
+                    if key not in failed_logins:
+                        failed_logins[key] = []
+                    failed_logins[key].append(event)
                 except (ValueError, TypeError):
                     continue
         
-        # Create alerts for IPs with too many failed attempts
+        # Create alerts for IPs with too many failed attempts within the time window
         for (source_ip, target_user), login_events in failed_logins.items():
-            if len(login_events) >= self.threshold:
-                alert_id = f"failed_logins_{source_ip}_{target_user}_{int(current_time.timestamp())}"
-                
-                alert = Alert(
-                    id=alert_id,
-                    title=f"Multiple Failed Login Attempts",
-                    description=f"Detected {len(login_events)} failed login attempts for user '{target_user}' from IP {source_ip} in the last {self.time_window_minutes} minutes",
-                    severity=self.severity,
-                    status=AlertStatus.OPEN,
-                    source="Security Events",
-                    timestamp=max(datetime.fromisoformat(e["@timestamp"].replace('Z', '+00:00')) for e in login_events),
-                    event_count=len(login_events),
-                    affected_users=[target_user],
-                    source_ips=[source_ip],
-                    event_ids=[str(e.get("EventRecordID", "")) for e in login_events],
-                    raw_events=login_events
-                )
-                alerts.append(alert)
+            # Sort events by timestamp
+            timestamped_events = []
+            for event in login_events:
+                if event.get("@timestamp"):
+                    try:
+                        timestamp = datetime.fromisoformat(event["@timestamp"].replace('Z', '+00:00'))
+                        timestamped_events.append((timestamp, event))
+                    except (ValueError, TypeError):
+                        continue
+            
+            # Sort by timestamp
+            timestamped_events.sort(key=lambda x: x[0])
+            
+            # Check for sequences of failed attempts within the time window
+            if len(timestamped_events) >= self.threshold:
+                # Use sliding window approach to find clusters of failed attempts
+                for i in range(len(timestamped_events) - self.threshold + 1):
+                    window_start = timestamped_events[i][0]
+                    window_events = []
+                    
+                    # Collect all events within the time window from this starting point
+                    for j in range(i, len(timestamped_events)):
+                        event_time = timestamped_events[j][0]
+                        time_diff_minutes = (event_time - window_start).total_seconds() / 60
+                        
+                        if time_diff_minutes <= self.time_window_minutes:
+                            window_events.append(timestamped_events[j][1])
+                        else:
+                            break  # Events are sorted, so we can break here
+                    
+                    # If we found enough events in this window, create an alert
+                    if len(window_events) >= self.threshold:
+                        alert_id = f"failed_logins_{source_ip}_{target_user}_{int(window_start.timestamp())}"
+                        
+                        # Check if we already created an alert for this combination recently
+                        # (to avoid duplicate alerts for overlapping windows)
+                        duplicate = False
+                        for existing_alert in alerts:
+                            if (existing_alert.source_ips == [source_ip] and 
+                                existing_alert.affected_users == [target_user] and
+                                abs((existing_alert.timestamp - window_start).total_seconds()) < 300):  # 5 min tolerance
+                                duplicate = True
+                                break
+                        
+                        if not duplicate:
+                            window_end = timestamped_events[i + len(window_events) - 1][0]
+                            actual_time_span = (window_end - window_start).total_seconds() / 60
+                            
+                            alert = Alert(
+                                id=alert_id,
+                                title=f"Multiple Failed Login Attempts",
+                                description=f"Detected {len(window_events)} failed login attempts for user '{target_user}' from IP {source_ip} within {actual_time_span:.1f} minutes",
+                                severity=self.severity,
+                                status=AlertStatus.OPEN,
+                                source="Security Events",
+                                timestamp=window_start,
+                                event_count=len(window_events),
+                                affected_users=[target_user],
+                                source_ips=[source_ip],
+                                event_ids=[str(e.get("EventRecordID", "")) for e in window_events],
+                                raw_events=window_events
+                            )
+                            alerts.append(alert)
+                            logger.info(f"Created alert for {len(window_events)} failed logins from {source_ip} to {target_user} within {actual_time_span:.1f} minutes")
+                            break  # Only create one alert per IP/user combination
         
         return alerts
 
@@ -125,7 +171,7 @@ class PrivilegeEscalationRule(AlertRule):
         # Look for privilege escalation events (Event ID 4728, 4732, 4756)
         escalation_events = []
         for event in events:
-            if event.get("EventID") in [4728, 4732, 4756]:  # User added to privileged group
+            if event.get("event", {}).get("id") in [4728, 4732, 4756]:  # User added to privileged group
                 escalation_events.append(event)
         
         if escalation_events:
@@ -133,7 +179,7 @@ class PrivilegeEscalationRule(AlertRule):
             alert_id = f"privilege_escalation_{int(current_time.timestamp())}"
             
             users = list(set(e.get("TargetUserName", "Unknown") for e in escalation_events))
-            source_ips = list(set(e.get("IpAddress", "Unknown") for e in escalation_events if e.get("IpAddress")))
+            source_ips = list(set(e.get("source", {}).get("ip") for e in escalation_events if e.get("source", {}).get("ip")))
             
             alert = Alert(
                 id=alert_id,
@@ -142,7 +188,7 @@ class PrivilegeEscalationRule(AlertRule):
                 severity=self.severity,
                 status=AlertStatus.OPEN,
                 source="Security Events",
-                timestamp=max(datetime.fromisoformat(e["@timestamp"].replace('Z', '+00:00')) for e in escalation_events if e.get("TimeGenerated")),
+                timestamp=max(datetime.fromisoformat(e["@timestamp"].replace('Z', '+00:00')) for e in escalation_events if e.get("@timestamp")),
                 event_count=len(escalation_events),
                 affected_users=users,
                 source_ips=source_ips,
@@ -169,7 +215,7 @@ class SuspiciousProcessRule(AlertRule):
         # Look for process creation events with suspicious processes
         suspicious_events = []
         for event in events:
-            if (event.get("EventID") == 4688 and  # Process creation
+            if (event.get("event", {}).get("id") == 4688 and  # Process creation
                 event.get("NewProcessName")):
                 
                 process_name = event["NewProcessName"].lower()
@@ -181,7 +227,7 @@ class SuspiciousProcessRule(AlertRule):
             alert_id = f"suspicious_process_{int(current_time.timestamp())}"
             
             users = list(set(e.get("SubjectUserName", "Unknown") for e in suspicious_events))
-            source_ips = list(set(e.get("IpAddress", "Unknown") for e in suspicious_events if e.get("IpAddress")))
+            source_ips = list(set(e.get("source", {}).get("ip") for e in suspicious_events if e.get("source", {}).get("ip")))
             
             alert = Alert(
                 id=alert_id,
@@ -190,7 +236,7 @@ class SuspiciousProcessRule(AlertRule):
                 severity=self.severity,
                 status=AlertStatus.OPEN,
                 source="Security Events",
-                timestamp=max(datetime.fromisoformat(e["@timestamp"].replace('Z', '+00:00')) for e in suspicious_events if e.get("TimeGenerated")),
+                timestamp=max(datetime.fromisoformat(e["@timestamp"].replace('Z', '+00:00')) for e in suspicious_events if e.get("@timestamp")),
                 event_count=len(suspicious_events),
                 affected_users=users,
                 source_ips=source_ips,

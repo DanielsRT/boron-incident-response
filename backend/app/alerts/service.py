@@ -13,7 +13,11 @@ class AlertService:
     def __init__(self):
         # Connect to Elasticsearch
         try:
-            self.es = Elasticsearch([f"https://elasticsearch:9200"])
+            self.es = Elasticsearch(
+                [settings.ELASTICSEARCH_HOST],
+                ca_certs=settings.APP_CERT_PATH,
+                basic_auth=(settings.ELASTIC_USERNAME, settings.ELASTIC_PASSWORD)
+                )
             if not self.es.ping():
                 logger.error("Could not connect to Elasticsearch")
                 self.es = None
@@ -71,10 +75,50 @@ class AlertService:
             logger.error(f"Error fetching events from Elasticsearch: {e}")
             return []
     
+    def get_all_events(self, limit: int = 10000) -> List[Dict[str, Any]]:
+        """Fetch all available security events from Elasticsearch (fallback when recent events are empty)"""
+        if not self.es:
+            logger.warning("Elasticsearch not available, returning empty events")
+            return []
+        
+        try:
+            # Search query for all security events
+            query = {
+                "query": {
+                    "match_all": {}
+                },
+                "sort": [
+                    {"@timestamp": {"order": "desc"}}
+                ],
+                "size": limit  # Limit to prevent memory issues
+            }
+            
+            # Execute search
+            response = self.es.search(
+                index="security-events-*",  # Adjust index pattern as needed
+                body=query
+            )
+            
+            events = []
+            for hit in response["hits"]["hits"]:
+                events.append(hit["_source"])
+            
+            logger.info(f"Retrieved {len(events)} total events from Elasticsearch (fallback)")
+            return events
+            
+        except Exception as e:
+            logger.error(f"Error fetching all events from Elasticsearch: {e}")
+            return []
+    
     def generate_alerts(self, events: Optional[List[Dict[str, Any]]] = None) -> List[Alert]:
         """Generate alerts by applying all rules to recent events"""
         if events is None:
             events = self.get_recent_events()
+            
+            # If recent events are empty, try to get all events as fallback
+            if not events:
+                logger.warning("No recent events found, attempting to fetch all events as fallback")
+                events = self.get_all_events()
         
         all_alerts = []
         

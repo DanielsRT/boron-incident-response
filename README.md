@@ -2,6 +2,8 @@
 
 A comprehensive security incident response system built with ELK Stack, Python FastAPI backend, and React frontend. This system fetches security events from Azure Log Analytics, processes them through Logstash to Elasticsearch, and provides a real-time dashboard for security analysts to monitor and respond to incidents.
 
+<img width="1202" height="921" alt="Screenshot 2025-09-03 012451" src="https://github.com/user-attachments/assets/c2a58fcb-f7b8-4d03-80da-d1ef26ed7122" />
+
 ## Architecture
 
 ```

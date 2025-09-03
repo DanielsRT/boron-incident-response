@@ -1,41 +1,82 @@
-# BORON-INCIDENT-RESPONSE
+# Security Incident Response Dashboard
 
-A Python and ELK app capable of requesting security events from Azure API and querying through Kibana. This application uses Logstash as a data processing pipeline to Elasticsearch and Kibana to sort and visualize security events as a web-based Incident Response Dashboard
+A comprehensive security incident response system built with ELK Stack, Python FastAPI backend, and React frontend. This system fetches security events from Azure Log Analytics, processes them through Logstash to Elasticsearch, and provides a real-time dashboard for security analysts to monitor and respond to incidents.
+
+## Architecture
+
+```
+Azure Log Analytics → Python Backend → Logstash → Elasticsearch → React Dashboard
+                           ↓
+                        Redis Cache
+```
+
+## Features
+
+### Backend Features
+- **Azure Integration**: Fetches SecurityEvent logs from Azure Log Analytics
+- **Real-time Processing**: Celery-based background task processing
+- **Alert Engine**: Configurable rule-based alert generation with multiple detection rules
+- **REST API**: FastAPI-based API for frontend integration
+- **Caching**: Redis-based caching for improved performance
+
+### Frontend Features
+- **Modern Dashboard**: React + Tailwind CSS responsive dashboard
+- **Real-time Updates**: Auto-refreshing alert feed
+- **Advanced Filtering**: Filter alerts by severity, status, and search terms
+- **Alert Management**: View detailed alert information and statistics
+- **Responsive Design**: Works on desktop and mobile devices
+
+### Alert Rules Implemented
+1. **Multiple Failed Logins**: Detects multiple failed login attempts from the same IP
+2. **Privilege Escalation**: Monitors for users being added to privileged groups
+3. **Suspicious Process Activity**: Alerts on execution of potentially malicious processes
 
 ## Project Structure
 
 ```
 boron-incident-response/
 ├── backend/
-│   ├── app/
-│   │   ├── main.py                     # FastAPI entrypoint
+│   ├── app/                  
+│   │   ├── __init__.py
+│   │   ├── celery_utils.py
 │   │   ├── core/                       # App-level configs
 │   │   │   └── config.py
-│   │   └── features/                   # One folder per domain feature
-│   │       └── log/
-│   │           ├── __init__.py         # /query-logs endpoint
-│   │           └── service.py          # Azure Log Analytics + query logic
-|   |
-│   ├── scripts/                        # Bash start scripts
-│   │   ├── backend                     
-│   |   |   ├── entrypoint              # Docker shell entry point
-│   │   │   └── start                   # backend start script
-│   │   └── celery/                     # App-level configs
-│   |       ├── beat
-│   │       |   └── start               # Celery beat start script
-│   │       └── worker
-│   │           └── start               # Celery worker start script
-|   |     
-|   ├── Dockerfile
+│   │   ├── alert/
+│   │   │   ├── __init__.py         # FastAPI router (e.g., router = APIRouter())
+│   │   │   ├── model.py            # Schema & ORM models
+│   │   │   ├── tasks.py            # Tasks (e.g., background alert jobs)
+│   │   │   └── service.py          # Business logic for alerts
+│   │   └── log/
+│   │       ├── __init__.py         # /query-logs endpoint
+│   │       └── service.py          # Azure Log Analytics + query logic
+│   ├── scripts/                  
+│   │   ├── generate-certs.sh            # localhost certificates generation script
+│   │   ├── backend/                     # Backend start scripts
+│   │   └── celery/                      # Celery start scripts
+│   ├── main.py                # FastAPI entrypoint
+│   ├── Dockerfile
 │   └── requirements.txt
 │
+├── frontend/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── components/
+│   │   ├── services/                   # API and MSAL/AAD hooks
+│   │   ├── types/
+│   │   ├── App.tsx
+│   │   └── index.tsx
+│   ├── Dockerfile
+│   ├── package.json
+│   └── vite.config.js
+│
 ├── logstash/
+│   ├── config/
 │   └── pipeline/
-│       └── logstash.conf               # TCP input + Azure file input + ES output
-|
-├── docker-compose.yml
-├── dev.env
+│       └── logstash.conf              # TCP input + Azure file input + ES output
+│
 ├── .gitignore
+├── docker-compose.yml
 └── README.md
 
 ```

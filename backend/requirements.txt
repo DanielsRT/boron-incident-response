@@ -4,3 +4,5 @@ celery[gevent]==5.5.3
 azure-identity==1.23.0
 httpx==0.28.1
 pydantic==2.11.7
+redis==6.2.0
+elasticsearch==8.16.0

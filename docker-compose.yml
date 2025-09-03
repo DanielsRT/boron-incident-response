@@ -1,27 +1,32 @@
-x-build-args: &common-build-args
-  args:
-    ELASTIC_VERSION: ${ELASTIC_VERSION}
-    ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST}
-    ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN: ${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
-    ELASTIC_SECURITY: ${ELASTIC_SECURITY}
-    ELASTIC_SSL: ${ELASTIC_SSL}
-
-
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
     container_name: elasticsearch
     restart: unless-stopped
     volumes:
       - esdata:/usr/share/elasticsearch/data/
+      - ./tls/ca.crt:/usr/share/elasticsearch/config/certs/ca.crt:ro
+      - ./tls/ca.key:/usr/share/elasticsearch/config/certs/ca.key:ro
+      - ./tls/server.crt:/usr/share/elasticsearch/config/certs/server.crt:ro
+      - ./tls/server.key:/usr/share/elasticsearch/config/certs/server.key:ro
     environment:
       - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
       - node.name=soc-ingest-node
       - cluster.name=soc-ingest-cluster
       - discovery.type=single-node
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - xpack.security.enabled=${ELASTIC_SECURITY}
-      - xpack.security.transport.ssl.enabled=${ELASTIC_SSL}
+      - network.host=0.0.0.0
+      # HTTP TLS (you already have these)
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=/usr/share/elasticsearch/config/certs/server.key
+      - xpack.security.http.ssl.certificate=/usr/share/elasticsearch/config/certs/server.crt
+      - xpack.security.http.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
+
+      # TRANSPORT TLS (required for cluster node communication & security)
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=/usr/share/elasticsearch/config/certs/server.key
+      - xpack.security.transport.ssl.certificate=/usr/share/elasticsearch/config/certs/server.crt
+      - xpack.security.transport.ssl.certificate_authorities=/usr/share/elasticsearch/config/certs/ca.crt
     env_file:
       - dev.env
     ports:
@@ -33,11 +38,23 @@ services:
       - elk
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION}
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION}
     container_name: kibana
     environment:
-      - ELASTICSEARCH_HOSTS=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
       - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
+      - XPACK_SECURITY_ENABLED=true
+      - ELASTICSEARCH_USERNAME=${KIBANA_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt
+      - ELASTICSEARCH_SSL_VERIFICATIONMODE=full
+      - SERVER_SSL_ENABLED=true
+      - SERVER_SSL_CERTIFICATE=/usr/share/kibana/config/certs/server.crt
+      - SERVER_SSL_KEY=/usr/share/kibana/config/certs/server.key
+    volumes:
+      - ./tls/ca.crt:/usr/share/kibana/config/certs/ca.crt:ro
+      - ./tls/server.crt:/usr/share/kibana/config/certs/server.crt:ro
+      - ./tls/server.key:/usr/share/kibana/config/certs/server.key:ro
     env_file:
       - dev.env
     ports:
@@ -49,19 +66,22 @@ services:
       - elk
 
   logstash:
-    image: logstash:9.0.3
+    image: logstash:${ELK_VERSION}
     container_name: logstash
     restart: unless-stopped
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./tls/ca.crt:/usr/share/logstash/config/certs/ca.crt:ro
+      - ./tls/server.crt:/usr/share/logstash/config/certs/server.crt:ro
+      - ./tls/server.key:/usr/share/logstash/config/certs/server.key:ro
     environment:
       - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
-      - xpack.monitoring.enabled=true
-      - xpack.monitoring.elasticsearch.username=${ELASTIC_USERNAME}
-      - xpack.monitoring.elasticsearch.password=${ELASTIC_PASSWORD}
-      - xpack.monitoring.collection.interval=10s
       - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST}
       - ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN=${ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN}
+      - ELASTICSEARCH_USERNAME=${LOGSTASH_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_PASSWORD}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/logstash/config/certs/ca.crt
+      - ELASTICSEARCH_SSL_ENABLED=true
     env_file:
       - dev.env
     depends_on:
@@ -76,56 +96,78 @@ services:
 
   redis:
     image: redis:8.2-rc1-bookworm
+    networks:
+      - elk
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_web
     command: /start
     volumes:
       - .:/app
+      - ./tls/ca.crt:/app/certs/ca.crt:ro
     ports:
-      - 8010:8000
+      - 8000:8000
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: boron_security_frontend
+    ports:
+      - 3000:3000
+    env_file:
+      - dev.env
+    depends_on:
+      - backend
+    networks:
+      - elk
 
   celery_worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_worker
     command: /start-celeryworker
     volumes:
       - .:/app
+      - ./tls/ca.crt:/app/certs/ca.crt:ro
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
 
   celery_beat:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      <<: *common-build-args
     image: boron_celery_beat
     command: /start-celerybeat
     volumes:
       - .:/app
+      - ./tls/ca.crt:/app/certs/ca.crt:ro
     env_file:
       - dev.env
     depends_on:
       - redis
       - elasticsearch
       - logstash
+    networks:
+      - elk
 
 volumes:
   esdata:

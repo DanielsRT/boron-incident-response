@@ -1,8 +1,5 @@
-ARG ELASTIC_VERSION
-ARG ELASTICSEARCH_HOST
-ARG ELASTICSEARCH_SERVICE_ACCOUNT_TOKEN
-ARG ELASTIC_SECURITY
-ARG ELASTIC_SSL
+ARG ELK_VERSION
+
 
 FROM python:3.13
 
@@ -41,6 +38,6 @@ COPY ./scripts/celery/beat/start /start-celerybeat
 RUN sed -i 's/\r$//g' /start-celerybeat
 RUN chmod +x /start-celerybeat
 
-WORKDIR /app
+WORKDIR /app/backend
 
 ENTRYPOINT ["/entrypoint"]

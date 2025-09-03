@@ -3,11 +3,21 @@ import { AlertStats } from '../types';
 import { 
   AlertTriangle, 
   Shield, 
-  Activity, 
   Eye, 
   CheckCircle, 
-  Clock 
+  Clock,
+  X 
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 
 interface StatsCardProps {
   title: string;
@@ -127,7 +137,7 @@ const AlertStatsOverview: React.FC<AlertStatsOverviewProps> = ({ stats }) => {
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <Activity className="w-4 h-4 text-gray-600" />
+              <X className="w-4 h-4 text-gray-600" />
               <span className="text-sm text-gray-600">False Positive</span>
             </div>
             <span className="text-sm font-medium text-gray-600">{stats.by_status.false_positive}</span>
@@ -135,12 +145,89 @@ const AlertStatsOverview: React.FC<AlertStatsOverviewProps> = ({ stats }) => {
         </div>
       </div>
 
-      {/* Recent Activity Chart Placeholder */}
+      {/* Recent Activity Chart */}
       <div className="bg-white rounded-lg shadow p-6 col-span-1 md:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">24h Activity</h3>
-        <div className="h-32 flex items-center justify-center text-gray-400">
-          <Activity className="w-8 h-8 mr-2" />
-          <span>Activity chart would go here</span>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={stats.recent_activity} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis 
+                dataKey="time" 
+                className="text-xs"
+                tick={{ fontSize: 12 }}
+              />
+              <YAxis 
+                className="text-xs"
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+                labelStyle={{ color: '#374151' }}
+              />
+              <Legend />
+              
+              {/* Total alerts line */}
+              <Line 
+                type="monotone" 
+                dataKey="total" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                name="Total Alerts"
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#3b82f6', strokeWidth: 2 }}
+              />
+              
+              {/* Critical alerts line */}
+              <Line 
+                type="monotone" 
+                dataKey="critical" 
+                stroke="#dc2626" 
+                strokeWidth={2}
+                name="Critical"
+                dot={{ fill: '#dc2626', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#dc2626', strokeWidth: 2 }}
+              />
+              
+              {/* High alerts line */}
+              <Line 
+                type="monotone" 
+                dataKey="high" 
+                stroke="#d97706" 
+                strokeWidth={2}
+                name="High"
+                dot={{ fill: '#d97706', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#d97706', strokeWidth: 2 }}
+              />
+              
+              {/* Medium alerts line */}
+              <Line 
+                type="monotone" 
+                dataKey="medium" 
+                stroke="#eab308" 
+                strokeWidth={2}
+                name="Medium"
+                dot={{ fill: '#eab308', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#eab308', strokeWidth: 2 }}
+              />
+              
+              {/* Low alerts line */}
+              <Line 
+                type="monotone" 
+                dataKey="low" 
+                stroke="#2563eb" 
+                strokeWidth={2}
+                name="Low"
+                dot={{ fill: '#2563eb', strokeWidth: 2, r: 3 }}
+                activeDot={{ r: 5, stroke: '#2563eb', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

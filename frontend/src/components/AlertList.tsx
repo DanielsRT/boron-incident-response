@@ -7,9 +7,10 @@ interface AlertListProps {
   alerts: Alert[];
   loading: boolean;
   onRefresh: () => void;
+  onStatusUpdate?: (alertId: string, newStatus: string) => void;
 }
 
-const AlertList: React.FC<AlertListProps> = ({ alerts, loading, onRefresh }) => {
+const AlertList: React.FC<AlertListProps> = ({ alerts, loading, onRefresh, onStatusUpdate }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -103,7 +104,7 @@ const AlertList: React.FC<AlertListProps> = ({ alerts, loading, onRefresh }) => 
         ) : (
           <div className="space-y-4">
             {filteredAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
+              <AlertCard key={alert.id} alert={alert} onStatusUpdate={onStatusUpdate} />
             ))}
           </div>
         )}

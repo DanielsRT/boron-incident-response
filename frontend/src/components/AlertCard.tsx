@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Alert } from '../types';
+import { alertsAPI } from '../services/api';
 import { format } from 'date-fns';
 import { 
   AlertTriangle, 
@@ -9,14 +10,52 @@ import {
   MapPin,
   Eye,
   CheckCircle,
-  XCircle 
+  XCircle,
+  ChevronDown,
+  Save
 } from 'lucide-react';
 
 interface AlertCardProps {
   alert: Alert;
+  onStatusUpdate?: (alertId: string, newStatus: string) => void;
 }
 
-const AlertCard: React.FC<AlertCardProps> = ({ alert }) => {
+const AlertCard: React.FC<AlertCardProps> = ({ alert, onStatusUpdate }) => {
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(alert.status);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const statusOptions = [
+    { value: 'open', label: 'Open' },
+    { value: 'investigating', label: 'Investigating' },
+    { value: 'resolved', label: 'Resolved' },
+    { value: 'false_positive', label: 'False Positive' }
+  ];
+
+  const handleStatusUpdate = async () => {
+    if (selectedStatus === alert.status) {
+      setIsEditingStatus(false);
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await alertsAPI.updateAlertStatus(alert.id, selectedStatus);
+      onStatusUpdate?.(alert.id, selectedStatus);
+      setIsEditingStatus(false);
+    } catch (error) {
+      console.error('Failed to update alert status:', error);
+      // Reset to original status on error
+      setSelectedStatus(alert.status);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStatusCancel = () => {
+    setSelectedStatus(alert.status);
+    setIsEditingStatus(false);
+  };
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical':
@@ -86,12 +125,52 @@ const AlertCard: React.FC<AlertCardProps> = ({ alert }) => {
           <h3 className="text-lg font-semibold">{alert.title}</h3>
         </div>
         <div className="flex items-center space-x-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(alert.status)}`}>
-            <div className="flex items-center space-x-1">
-              {getStatusIcon(alert.status)}
-              <span className="capitalize">{alert.status.replace('_', ' ')}</span>
+          {/* Status Selector */}
+          {isEditingStatus ? (
+            <div className="flex items-center space-x-2">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value as 'open' | 'investigating' | 'resolved' | 'false_positive')}
+                className="px-2 py-1 text-xs border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                disabled={isUpdating}
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleStatusUpdate}
+                disabled={isUpdating}
+                className="p-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                title="Save"
+              >
+                <Save className="w-3 h-3" />
+              </button>
+              <button
+                onClick={handleStatusCancel}
+                disabled={isUpdating}
+                className="p-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50"
+                title="Cancel"
+              >
+                <XCircle className="w-3 h-3" />
+              </button>
             </div>
-          </span>
+          ) : (
+            <button
+              onClick={() => setIsEditingStatus(true)}
+              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedStatus)} hover:opacity-80 transition-opacity`}
+            >
+              <div className="flex items-center space-x-1">
+                {getStatusIcon(selectedStatus)}
+                <span className="capitalize">{selectedStatus.replace('_', ' ')}</span>
+                <ChevronDown className="w-3 h-3" />
+              </div>
+            </button>
+          )}
+          
+          {/* Severity Badge */}
           <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize
             ${alert.severity === 'critical' ? 'bg-danger-600 text-white' :
               alert.severity === 'high' ? 'bg-warning-600 text-white' :

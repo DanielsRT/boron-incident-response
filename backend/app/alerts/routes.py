@@ -1,9 +1,14 @@
 from fastapi import HTTPException, Query
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 
 from . import alerts_router
 from .service import alert_service
 from .models import AlertSeverity, AlertStatus
+
+
+class AlertStatusUpdate(BaseModel):
+    status: AlertStatus
 
 @alerts_router.get("/")
 async def get_alerts(
@@ -50,3 +55,22 @@ async def get_recent_events(hours: int = Query(24, ge=1, le=168, description="Ho
         return events
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching events: {str(e)}")
+
+
+@alerts_router.patch("/{alert_id}/status")
+async def update_alert_status(alert_id: str, status_update: AlertStatusUpdate) -> Dict[str, Any]:
+    """Update the status of an alert"""
+    try:
+        success = alert_service.update_alert_status(alert_id, status_update.status)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found or could not be updated")
+        
+        return {
+            "message": f"Alert {alert_id} status updated to {status_update.status.value}",
+            "alert_id": alert_id,
+            "new_status": status_update.status.value
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating alert status: {str(e)}")

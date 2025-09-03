@@ -21,9 +21,43 @@ class AlertService:
             if not self.es.ping():
                 logger.error("Could not connect to Elasticsearch")
                 self.es = None
+            else:
+                # Ensure alerts index exists
+                self._ensure_alerts_index()
         except Exception as e:
             logger.error(f"Error connecting to Elasticsearch: {e}")
             self.es = None
+            
+    def _ensure_alerts_index(self):
+        """Ensure the alerts index exists with proper mapping"""
+        if not self.es:
+            return
+            
+        index_name = "security-alerts"
+        
+        if not self.es.indices.exists(index=index_name):
+            mapping = {
+                "mappings": {
+                    "properties": {
+                        "id": {"type": "keyword"},
+                        "title": {"type": "text"},
+                        "description": {"type": "text"},
+                        "severity": {"type": "keyword"},
+                        "status": {"type": "keyword"},
+                        "source": {"type": "keyword"},
+                        "timestamp": {"type": "date"},
+                        "event_count": {"type": "integer"},
+                        "affected_users": {"type": "keyword"},
+                        "source_ips": {"type": "ip"},
+                        "event_ids": {"type": "keyword"},
+                        "raw_events": {"type": "object"},
+                        "created_at": {"type": "date"},
+                        "updated_at": {"type": "date"}
+                    }
+                }
+            }
+            self.es.indices.create(index=index_name, body=mapping)
+            logger.info(f"Created alerts index: {index_name}")
     
     def get_recent_events(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Fetch recent security events from Elasticsearch"""
@@ -138,9 +172,17 @@ class AlertService:
                    limit: int = 100) -> List[Dict[str, Any]]:
         """Get alerts with optional filtering"""
         
-        # For now, generate alerts in real-time
-        # In production, you might want to cache/store alerts
+        # Try to get stored alerts first
+        stored_alerts = self.get_stored_alerts(status=status, severity=severity, limit=limit)
+        if stored_alerts:
+            return stored_alerts
+        
+        # Fallback to generating alerts in real-time
         alerts = self.generate_alerts()
+        
+        # Store newly generated alerts
+        for alert in alerts:
+            self.store_alert(alert)
         
         # Apply filters
         if status:
@@ -178,6 +220,106 @@ class AlertService:
         }
         
         return stats
+    
+    def store_alert(self, alert: Alert) -> bool:
+        """Store an alert in Elasticsearch"""
+        if not self.es:
+            logger.warning("Elasticsearch not available, cannot store alert")
+            return False
+            
+        try:
+            alert_dict = alert.to_dict()
+            alert_dict["created_at"] = datetime.now(timezone.utc).isoformat()
+            alert_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+            
+            self.es.index(
+                index="security-alerts",
+                id=alert.id,
+                body=alert_dict
+            )
+            logger.info(f"Stored alert {alert.id} in Elasticsearch")
+            return True
+        except Exception as e:
+            logger.error(f"Error storing alert {alert.id}: {e}")
+            return False
+    
+    def update_alert_status(self, alert_id: str, status: AlertStatus) -> bool:
+        """Update the status of an alert"""
+        if not self.es:
+            logger.warning("Elasticsearch not available, cannot update alert")
+            return False
+            
+        try:
+            # Check if alert exists
+            if not self.es.exists(index="security-alerts", id=alert_id):
+                logger.error(f"Alert {alert_id} not found")
+                return False
+                
+            # Update the alert status
+            update_body = {
+                "doc": {
+                    "status": status.value,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+            }
+            
+            self.es.update(
+                index="security-alerts",
+                id=alert_id,
+                body=update_body
+            )
+            logger.info(f"Updated alert {alert_id} status to {status.value}")
+            return True
+        except Exception as e:
+            logger.error(f"Error updating alert {alert_id} status: {e}")
+            return False
+    
+    def get_stored_alerts(self, 
+                         status: Optional[AlertStatus] = None,
+                         severity: Optional[AlertSeverity] = None,
+                         limit: int = 100) -> List[Dict[str, Any]]:
+        """Get stored alerts from Elasticsearch with optional filtering"""
+        if not self.es:
+            logger.warning("Elasticsearch not available, falling back to generated alerts")
+            return self.get_alerts(status=status, severity=severity, limit=limit)
+        
+        try:
+            # Build query
+            query = {"match_all": {}}
+            filters = []
+            
+            if status:
+                filters.append({"term": {"status": status.value}})
+            if severity:
+                filters.append({"term": {"severity": severity.value}})
+                
+            if filters:
+                query = {
+                    "bool": {
+                        "must": filters
+                    }
+                }
+            
+            # Search for alerts
+            response = self.es.search(
+                index="security-alerts",
+                body={
+                    "query": query,
+                    "sort": [{"timestamp": {"order": "desc"}}],
+                    "size": limit
+                }
+            )
+            
+            alerts = []
+            for hit in response["hits"]["hits"]:
+                alert_data = hit["_source"]
+                alerts.append(alert_data)
+                
+            return alerts
+        except Exception as e:
+            logger.error(f"Error retrieving stored alerts: {e}")
+            # Fallback to generated alerts
+            return self.get_alerts(status=status, severity=severity, limit=limit)
     
     def _get_recent_activity_stats(self, alerts: List[Alert]) -> List[Dict[str, Any]]:
         """Get recent activity statistics for charts"""

@@ -32,6 +32,11 @@ export const alertsAPI = {
     const response = await api.get('/alerts/events', { params: { hours } });
     return response.data;
   },
+
+  updateAlertStatus: async (alertId: string, status: string): Promise<{ message: string; alert_id: string; new_status: string }> => {
+    const response = await api.patch(`/alerts/${alertId}/status`, { status });
+    return response.data;
+  },
 };
 
 export default api;

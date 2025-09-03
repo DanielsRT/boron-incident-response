@@ -49,6 +49,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleStatusUpdate = async (alertId: string, newStatus: string) => {
+    // Update the alert in the local state immediately for better UX
+    setAlerts(prevAlerts => 
+      prevAlerts.map(alert => 
+        alert.id === alertId ? { ...alert, status: newStatus as any } : alert
+      )
+    );
+    
+    // Refresh stats to reflect the change
+    try {
+      const statsData = await alertsAPI.getStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error('Error refreshing stats:', err);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     
@@ -66,7 +83,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center">
               <Shield className="w-8 h-8 text-blue-600 mr-3" />
               <h1 className="text-3xl font-bold text-gray-900">
-                Security Incident Response
+                Boron Incident Response
               </h1>
             </div>
             
@@ -125,6 +142,7 @@ const Dashboard: React.FC = () => {
             alerts={alerts} 
             loading={loading && stats !== null} 
             onRefresh={fetchData}
+            onStatusUpdate={handleStatusUpdate}
           />
         )}
       </main>

@@ -48,6 +48,24 @@ class Alert:
             "event_ids": self.event_ids,
             "raw_events": self.raw_events
         }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Alert':
+        """Create Alert instance from dictionary"""
+        return cls(
+            id=data["id"],
+            title=data["title"],
+            description=data["description"],
+            severity=AlertSeverity(data["severity"]),
+            status=AlertStatus(data["status"]),
+            source=data["source"],
+            timestamp=datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00')),
+            event_count=data["event_count"],
+            affected_users=data.get("affected_users", []),
+            source_ips=data.get("source_ips", []),
+            event_ids=data.get("event_ids", []),
+            raw_events=data.get("raw_events", [])
+        )
 
 class AlertRule:
     """Base class for alert rules"""

@@ -7,13 +7,81 @@ set -o pipefail
 # exits if any of your variables is not set
 set -o nounset
 
-# Wait for Elasticsearch
-echo "Waiting for Elasticsearch..."
-until curl -s --insecure https://elasticsearch:9200 >/dev/null; do
-  echo "Still waiting..."
-  sleep 2
+# Wait for Elasticsearch to be ready
+until curl -s -X GET "https://elasticsearch:9200/_cluster/health" -u "elastic:${ELASTIC_PASSWORD}" -k; do
+  echo "Waiting for Elasticsearch..."
+  sleep 5
 done
-echo "Elasticsearch is running!"
+
+echo "Setting up Elasticsearch users and roles..."
+
+# Function to create user if it doesn't exist
+create_user_if_not_exists() {
+  local username=$1
+  local user_data=$2
+  
+  # Check if user exists
+  if curl -s -X GET "https://elasticsearch:9200/_security/user/${username}" \
+     -u "elastic:${ELASTIC_PASSWORD}" -k | grep -q "\"${username}\""; then
+    echo "User ${username} already exists, skipping creation"
+  else
+    echo "Creating user ${username}..."
+    curl -X POST "https://elasticsearch:9200/_security/user/${username}" \
+      -u "elastic:${ELASTIC_PASSWORD}" \
+      -H "Content-Type: application/json" \
+      -k \
+      -d "${user_data}"
+  fi
+}
+
+# Function to create role if it doesn't exist
+create_role_if_not_exists() {
+  local rolename=$1
+  local role_data=$2
+  
+  # Check if role exists
+  if curl -s -X GET "https://elasticsearch:9200/_security/role/${rolename}" \
+     -u "elastic:${ELASTIC_PASSWORD}" -k | grep -q "\"${rolename}\""; then
+    echo "Role ${rolename} already exists, skipping creation"
+  else
+    echo "Creating role ${rolename}..."
+    curl -X POST "https://elasticsearch:9200/_security/role/${rolename}" \
+      -u "elastic:${ELASTIC_PASSWORD}" \
+      -H "Content-Type: application/json" \
+      -k \
+      -d "${role_data}"
+  fi
+}
+
+# Create logstash_writer role first (users depend on roles)
+create_role_if_not_exists "logstash_writer" '{
+  "cluster": ["manage_index_templates", "monitor", "manage_ilm"],
+  "indices": [
+    {
+      "names": ["logstash-*", "logs-*", "security-*"],
+      "privileges": ["write", "create", "create_index", "manage", "manage_ilm"]
+    }
+  ]
+}'
+
+# Create logstash_internal user
+create_user_if_not_exists "logstash_internal" '{
+  "password": "'${LOGSTASH_PASSWORD}'",
+  "roles": ["logstash_writer"],
+  "full_name": "Logstash Internal User"
+}'
+
+# Set kibana_system password (always safe to run)
+echo "Setting kibana_system password..."
+curl -X POST "https://elasticsearch:9200/_security/user/kibana_system/_password" \
+  -u "elastic:${ELASTIC_PASSWORD}" \
+  -H "Content-Type: application/json" \
+  -k \
+  -d '{
+    "password": "'${KIBANA_PASSWORD}'"
+  }'
+
+echo "Elasticsearch setup completed successfully!"
 
 # used to make the entrypoint a pass through to ensure that Docker 
 # runs the command the user passes in (command: /start, in our case)

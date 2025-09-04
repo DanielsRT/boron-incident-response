@@ -15,6 +15,8 @@ services:
       - cluster.name=soc-ingest-cluster
       - discovery.type=single-node
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - LOGSTASH_PASSWORD=${LOGSTASH_PASSWORD}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD}
       - network.host=0.0.0.0
       # HTTP TLS (you already have these)
       - xpack.security.http.ssl.enabled=true

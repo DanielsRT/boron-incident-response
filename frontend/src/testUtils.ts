@@ -24,10 +24,10 @@ export const mockAlert: Alert = {
 export const mockAlertStats: AlertStats = {
   total_alerts: 15,
   by_severity: {
-    critical: 2,
+    critical: 3,
     high: 5,
     medium: 6,
-    low: 2
+    low: 1
   },
   by_status: {
     open: 8,
@@ -65,14 +65,24 @@ export const createMockAlert = (overrides: Partial<Alert> = {}): Alert => ({
 export const createMockAlerts = (count: number = 3): Alert[] => {
   const severities: Alert['severity'][] = ['critical', 'high', 'medium', 'low'];
   const statuses: Alert['status'][] = ['open', 'investigating', 'resolved', 'false_positive'];
+  const descriptions = [
+    'Multiple failed login attempts detected for user admin@example.com',
+    'Suspicious network activity detected from external IP',
+    'Unusual file access pattern detected in sensitive directory',
+    'Potential malware detected in system files',
+    'Unauthorized privilege escalation attempt detected'
+  ];
   
   return Array.from({ length: count }, (_, index) => ({
     ...mockAlert,
     id: `alert-${index + 1}`,
     title: `Test Alert ${index + 1}`,
+    description: descriptions[index % descriptions.length],
     severity: severities[index % severities.length],
     status: statuses[index % statuses.length],
     timestamp: new Date(Date.now() - (index * 3600000)).toISOString(), // Different timestamps
+    affected_users: [`user${index + 1}@example.com`],
+    source_ips: [`192.168.1.${100 + index}`],
   }));
 };
 
@@ -81,6 +91,23 @@ export const createMockStats = (overrides: Partial<AlertStats> = {}): AlertStats
   ...mockAlertStats,
   ...overrides
 });
+
+// Helper function to create alert stats variants (alias for consistency)
+export const createMockAlertStats = (overrides: Partial<AlertStats> = {}): AlertStats => ({
+  ...mockAlertStats,
+  ...overrides
+});
+
+// Test environment setup and cleanup utilities
+export const setupTestEnvironment = () => {
+  // Setup any global test state or mocks
+  jest.clearAllMocks();
+};
+
+export const cleanupTestEnvironment = () => {
+  // Clean up any test state
+  jest.clearAllMocks();
+};
 
 // Test wrapper utilities
 export const waitForLoadingToFinish = () => new Promise(resolve => setTimeout(resolve, 0));

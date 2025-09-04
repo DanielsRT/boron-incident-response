@@ -1,0 +1,200 @@
+import { Alert, AlertStats } from '../types';
+
+// Mock Alert data
+export const mockAlert: Alert = {
+  id: 'alert-123',
+  title: 'Suspicious Network Activity',
+  description: 'Multiple failed login attempts detected from unusual IP address',
+  severity: 'high',
+  status: 'open',
+  source: 'Network Security Monitor',
+  timestamp: '2024-01-15T10:30:00Z',
+  event_count: 25,
+  affected_users: ['user1@example.com', 'user2@example.com'],
+  source_ips: ['192.168.1.100', '10.0.0.50'],
+  event_ids: ['evt-001', 'evt-002', 'evt-003'],
+  raw_events: [
+    { id: 'evt-001', timestamp: '2024-01-15T10:30:00Z', details: 'Failed login attempt' },
+    { id: 'evt-002', timestamp: '2024-01-15T10:31:00Z', details: 'Failed login attempt' }
+  ]
+};
+
+// Mock AlertStats data
+export const mockAlertStats: AlertStats = {
+  total_alerts: 156,
+  by_severity: {
+    critical: 12,
+    high: 34,
+    medium: 67,
+    low: 43
+  },
+  by_status: {
+    open: 89,
+    investigating: 45,
+    resolved: 20,
+    false_positive: 2
+  },
+  recent_activity: [
+    { time: '00:00', total: 10, critical: 2, high: 3, medium: 3, low: 2 },
+    { time: '01:00', total: 8, critical: 1, high: 2, medium: 3, low: 2 },
+    { time: '02:00', total: 12, critical: 3, high: 4, medium: 3, low: 2 },
+    { time: '03:00', total: 15, critical: 2, high: 5, medium: 5, low: 3 },
+    { time: '04:00', total: 7, critical: 1, high: 2, medium: 2, low: 2 }
+  ]
+};
+
+// Helper functions to create mock data variations
+export const createMockAlert = (overrides: Partial<Alert> = {}): Alert => ({
+  ...mockAlert,
+  ...overrides,
+  id: overrides.id || `alert-${Math.random().toString(36).substr(2, 9)}`
+});
+
+export const createMockAlerts = (count: number = 5, overrides: Partial<Alert> = {}): Alert[] => {
+  return Array.from({ length: count }, (_, index) => 
+    createMockAlert({
+      ...overrides,
+      id: `alert-${index + 1}`,
+      title: `Alert ${index + 1}`,
+      timestamp: new Date(Date.now() - index * 3600000).toISOString() // Hours apart
+    })
+  );
+};
+
+export const createMockAlertStats = (overrides: Partial<AlertStats> = {}): AlertStats => ({
+  ...mockAlertStats,
+  ...overrides
+});
+
+// Mock API responses
+export const mockApiResponses = {
+  alerts: {
+    success: mockAlert,
+    list: createMockAlerts(10),
+    error: new Error('Failed to fetch alerts')
+  },
+  stats: {
+    success: mockAlertStats,
+    error: new Error('Failed to fetch stats')
+  },
+  generate: {
+    success: { message: 'Alerts generated successfully', alert_count: 5 },
+    error: new Error('Failed to generate alerts')
+  },
+  events: {
+    success: [
+      { id: 'evt-001', timestamp: '2024-01-15T10:30:00Z', details: 'Event 1' },
+      { id: 'evt-002', timestamp: '2024-01-15T10:31:00Z', details: 'Event 2' }
+    ],
+    error: new Error('Failed to fetch events')
+  },
+  updateStatus: {
+    success: { message: 'Status updated', alert_id: 'alert-123', new_status: 'investigating' },
+    error: new Error('Failed to update status')
+  }
+};
+
+// Test utilities for common scenarios
+export const severityOptions = ['critical', 'high', 'medium', 'low'] as const;
+export const statusOptions = ['open', 'investigating', 'resolved', 'false_positive'] as const;
+
+export const createAlertsWithSeverities = (): Alert[] => {
+  return severityOptions.map((severity, index) => 
+    createMockAlert({ 
+      severity, 
+      id: `alert-${severity}-${index}`,
+      title: `${severity.toUpperCase()} Alert ${index + 1}`
+    })
+  );
+};
+
+export const createAlertsWithStatuses = (): Alert[] => {
+  return statusOptions.map((status, index) => 
+    createMockAlert({ 
+      status, 
+      id: `alert-${status}-${index}`,
+      title: `Alert ${index + 1} (${status})`
+    })
+  );
+};
+
+// Mock axios for testing
+export const createMockAxios = (): any => ({
+  get: jest.fn(),
+  post: jest.fn(),
+  patch: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  create: jest.fn((): any => createMockAxios()),
+  defaults: {},
+  interceptors: {
+    request: { use: jest.fn(), eject: jest.fn() },
+    response: { use: jest.fn(), eject: jest.fn() }
+  }
+});
+
+// Date utilities for testing
+export const mockDateFns = {
+  format: jest.fn((date, formatStr) => {
+    if (formatStr === 'MMM dd, HH:mm') {
+      return 'Jan 15, 10:30';
+    }
+    return 'Jan 15, 2024';
+  })
+};
+
+// Error scenarios for testing
+export const errorScenarios = {
+  networkError: new Error('Network Error'),
+  timeoutError: new Error('Request Timeout'),
+  serverError: { response: { status: 500, data: 'Internal Server Error' } },
+  notFoundError: { response: { status: 404, data: 'Not Found' } },
+  validationError: { response: { status: 400, data: 'Bad Request' } }
+};
+
+// Helper for testing async operations
+export const waitForAsync = () => new Promise(resolve => setTimeout(resolve, 0));
+
+// Mock window object utilities
+export const mockWindow = {
+  location: {
+    reload: jest.fn()
+  },
+  localStorage: {
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    clear: jest.fn()
+  },
+  console: {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn()
+  }
+};
+
+// Testing environment setup helpers
+export const setupTestEnvironment = () => {
+  // Mock console methods to avoid noise in tests
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  jest.spyOn(console, 'log').mockImplementation(() => {});
+};
+
+export const cleanupTestEnvironment = () => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+};
+
+// Custom matchers for better assertions
+export const customMatchers = {
+  toHaveAlert: (alerts: Alert[], alertId: string) => {
+    return alerts.some(alert => alert.id === alertId);
+  },
+  toHaveSeverity: (alert: Alert, severity: string) => {
+    return alert.severity === severity;
+  },
+  toHaveStatus: (alert: Alert, status: string) => {
+    return alert.status === status;
+  }
+};

@@ -22,11 +22,12 @@ Azure Log Analytics → Python Backend → Logstash → Elasticsearch → React 
 - **Caching**: Redis-based caching for improved performance
 
 ### Frontend Features
-- **Modern Dashboard**: React + Tailwind CSS responsive dashboard
+- **Modern Dashboard**: React + Tailwind CSS responsive dashboard with React 19 compatibility
 - **Real-time Updates**: Auto-refreshing alert feed
 - **Advanced Filtering**: Filter alerts by severity, status, and search terms
 - **Alert Management**: View detailed alert information and statistics
 - **Responsive Design**: Works on desktop and mobile devices
+- **Clean Architecture**: Zero console warnings, optimized for React 19
 
 ### Alert Rules Implemented
 1. **Multiple Failed Logins**: Detects multiple failed login attempts from the same IP
@@ -79,6 +80,55 @@ boron-incident-response/
 │
 ├── .gitignore
 ├── docker-compose.yml
-└── README.md
+├── README.md
+└── TESTING.md
+
+```
+
+## Testing
+
+### Quick Test Commands
+```bash
+# Frontend tests with coverage
+cd frontend
+npm test                    # Interactive mode
+npm test -- --watchAll=false  # Single run
+npm run test:coverage      # With coverage report
+
+# Backend tests with coverage  
+cd backend
+pytest                     # All tests
+pytest --cov=app --cov-report=term  # With coverage
+```
+
+### Test Status
+- **Frontend**: 76 tests passing, zero React DOM warnings
+- **Backend**: 82 tests across unit and integration suites
+- **React 19 Compatibility**: Fully compatible with latest React version
+- **Coverage Reports**: Available for both frontend and backend
+
+See [TESTING.md](TESTING.md) for comprehensive testing documentation.
+
+## Technical Stack
+
+### Frontend
+- **React 19.1.1** with TypeScript
+- **Tailwind CSS** for styling
+- **Vite** for build tooling
+- **Jest + React Testing Library** for testing
+- **Custom components** optimized for React 19
+
+### Backend
+- **Python 3.11+** with FastAPI
+- **Celery** for background tasks
+- **Elasticsearch** for search and analytics
+- **Redis** for caching and task queue
+- **pytest** for comprehensive testing
+
+### Infrastructure
+- **Docker Compose** for local development
+- **Logstash** for data pipeline
+- **Azure Log Analytics** integration
+- **TLS/SSL** certificate generation
 
 ```

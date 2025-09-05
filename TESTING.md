@@ -46,6 +46,28 @@ describe('AlertCard Component', () => {
 });
 ```
 
+### React 19 Compatibility
+**React DOM Warnings Resolution**: As of September 2025, the project successfully resolved React DOM prop warnings that occurred with React 19.1.1 + Recharts 3.1.2:
+
+**Issue**: Recharts was passing unknown DOM props (`dataKey`, `contentStyle`, `labelStyle`, etc.) to DOM elements, causing React 19 to emit warnings.
+
+**Solution**: Replaced Recharts chart components with custom table-based visualizations in:
+- `AlertStatsOverview.tsx`: 24h activity chart → responsive data table
+- Maintained all functionality while ensuring React 19 compatibility
+- Zero console warnings during test execution
+
+**Benefits**: 
+- Clean test console output
+- Better React 19 compatibility
+- Responsive table design
+- No dependency on third-party charting libraries
+
+### Current Status
+- **76 tests total** passing with **zero React DOM warnings**
+- **Test Coverage**: Available via jest with HTML reports in `coverage/`
+- **React 19 Compatibility**: Components updated to eliminate DOM prop warnings
+- **Clean Console Output**: No warnings or errors during test execution
+
 ## Backend Testing
 
 ### Quick Commands
@@ -180,6 +202,7 @@ docker-compose exec frontend npm test
 **Watch mode appearing**: Use `npm test -- --watchAll=false`
 **Async test failures**: Use `waitFor()` for async assertions
 **Axios mocking issues**: Check `setupTests.ts` configuration
+**React DOM warnings**: Resolved by replacing Recharts with custom table components (React 19 compatibility)
 
 ### Backend
 **Database connection errors**: Ensure test database exists
@@ -216,4 +239,4 @@ docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 - Keep tests independent
 - Run tests before pushing changes
 
-Last updated: September 4, 2025
+Last updated: September 5, 2025

@@ -70,11 +70,11 @@ describe('AlertStatsOverview', () => {
 
       // Check critical alerts card
       expect(screen.getByText('Critical Alerts')).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(2); // Card + breakdown
+      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(3); // Card + breakdown + activity table
 
       // Check high priority card
       expect(screen.getByText('High Priority')).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(2); // Card + breakdown
+      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(3); // Card + breakdown + activity table
 
       // Check open alerts card
       expect(screen.getByText('Open Alerts')).toBeInTheDocument();
@@ -86,17 +86,17 @@ describe('AlertStatsOverview', () => {
 
       expect(screen.getByText('Severity Breakdown')).toBeInTheDocument();
       
-      // Check all severity levels are displayed
-      expect(screen.getByText('Critical')).toBeInTheDocument();
-      expect(screen.getByText('High')).toBeInTheDocument();
-      expect(screen.getByText('Medium')).toBeInTheDocument();
-      expect(screen.getByText('Low')).toBeInTheDocument();
+      // Check all severity levels are displayed (using getAllByText for items that appear in multiple places)
+      expect(screen.getAllByText('Critical')).toHaveLength(2); // Breakdown section + table header
+      expect(screen.getAllByText('High')).toHaveLength(2); // Breakdown section + table header  
+      expect(screen.getAllByText('Medium')).toHaveLength(2); // Breakdown section + table header
+      expect(screen.getAllByText('Low')).toHaveLength(2); // Breakdown section + table header
 
       // Check values are displayed (using getAllByText for duplicates)
-      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(2);
-      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(2);
+      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(3); // Card + breakdown + activity table
+      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(3); // Card + breakdown + activity table
       expect(screen.getByText(mockAlertStats.by_severity.medium.toString())).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.low.toString())).toHaveLength(2); // Severity + status (false_positive)
+      expect(screen.getAllByText(mockAlertStats.by_severity.low.toString())).toHaveLength(6); // Appears throughout the activity table
     });
 
     it('renders status breakdown section', () => {
@@ -113,16 +113,16 @@ describe('AlertStatsOverview', () => {
       // Check values are displayed (some appear in multiple places)
       expect(screen.getAllByText(mockAlertStats.by_status.open.toString())).toHaveLength(2); // Card + breakdown
       expect(screen.getByText(mockAlertStats.by_status.investigating.toString())).toBeInTheDocument();
-      expect(screen.getByText(mockAlertStats.by_status.resolved.toString())).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_status.false_positive.toString())).toHaveLength(2); // Low severity + false_positive status
+      expect(screen.getAllByText(mockAlertStats.by_status.resolved.toString())).toHaveLength(3); // Appears multiple times in activity table too
+      expect(screen.getAllByText(mockAlertStats.by_status.false_positive.toString())).toHaveLength(6); // Appears throughout the activity table
     });
 
-    it('renders 24h activity chart', () => {
+    it('renders 24h activity table', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
 
       expect(screen.getByText('24h Activity')).toBeInTheDocument();
-      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+      expect(screen.getByText('Time')).toBeInTheDocument();
+      expect(screen.getByText('Total')).toBeInTheDocument();
     });
   });
 
@@ -151,34 +151,28 @@ describe('AlertStatsOverview', () => {
     });
   });
 
-  describe('Chart Data', () => {
-    it('passes correct data to line chart', () => {
+  describe('Activity Table', () => {
+    it('displays recent activity data in table format', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
-
-      const lineChart = screen.getByTestId('line-chart');
-      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
       
-      expect(chartData).toEqual(mockAlertStats.recent_activity);
+      // Check for table headers
+      expect(screen.getByText('Time')).toBeInTheDocument();
+      expect(screen.getByText('Total')).toBeInTheDocument();
+      expect(screen.getAllByText('Critical')).toHaveLength(2); // One in severity breakdown, one in table header
+      expect(screen.getAllByText('High')).toHaveLength(2); // One in severity breakdown, one in table header
+      expect(screen.getAllByText('Medium')).toHaveLength(2); // One in severity breakdown, one in table header
+      expect(screen.getAllByText('Low')).toHaveLength(2); // One in severity breakdown, one in table header
+      
+      // Check for first row of data
+      expect(screen.getByText('04:00 AM')).toBeInTheDocument();
     });
 
-    it('renders all severity lines in chart', () => {
+    it('displays activity data with correct formatting', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
 
-      expect(screen.getByTestId('line-total')).toBeInTheDocument();
-      expect(screen.getByTestId('line-critical')).toBeInTheDocument();
-      expect(screen.getByTestId('line-high')).toBeInTheDocument();
-      expect(screen.getByTestId('line-medium')).toBeInTheDocument();
-      expect(screen.getByTestId('line-low')).toBeInTheDocument();
-    });
-
-    it('uses correct colors for chart lines', () => {
-      render(<AlertStatsOverview stats={mockAlertStats} />);
-
-      expect(screen.getByTestId('line-total')).toHaveAttribute('data-stroke', '#3b82f6');
-      expect(screen.getByTestId('line-critical')).toHaveAttribute('data-stroke', '#dc2626');
-      expect(screen.getByTestId('line-high')).toHaveAttribute('data-stroke', '#d97706');
-      expect(screen.getByTestId('line-medium')).toHaveAttribute('data-stroke', '#eab308');
-      expect(screen.getByTestId('line-low')).toHaveAttribute('data-stroke', '#2563eb');
+      // Check that numbers are displayed correctly
+      const criticalValues = screen.getAllByText('1');
+      expect(criticalValues.length).toBeGreaterThan(0);
     });
   });
 
@@ -218,16 +212,22 @@ describe('AlertStatsOverview', () => {
 
       render(<AlertStatsOverview stats={emptyActivityStats} />);
 
-      const lineChart = screen.getByTestId('line-chart');
-      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
+      // Check that activity section still renders with headers
+      expect(screen.getByText('24h Activity')).toBeInTheDocument();
+      expect(screen.getByText('Time')).toBeInTheDocument();
+      expect(screen.getByText('Total')).toBeInTheDocument();
       
-      expect(chartData).toEqual([]);
+      // No data rows should be present
+      expect(screen.queryByText('04:00 AM')).not.toBeInTheDocument();
     });
 
     it('handles single data point in recent activity', () => {
+      const noon = new Date();
+      noon.setHours(12, 0, 0, 0);
+      
       const singlePointStats = createMockAlertStats({
         recent_activity: [{
-          time: '12:00',
+          time: noon.toISOString(),
           total: 10,
           critical: 2,
           high: 3,
@@ -238,18 +238,11 @@ describe('AlertStatsOverview', () => {
 
       render(<AlertStatsOverview stats={singlePointStats} />);
 
-      const lineChart = screen.getByTestId('line-chart');
-      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
-      
-      expect(chartData).toHaveLength(1);
-      expect(chartData[0]).toEqual({
-        time: '12:00',
-        total: 10,
-        critical: 2,
-        high: 3,
-        medium: 3,
-        low: 2
-      });
+      // Check that the single data point is displayed correctly
+      expect(screen.getByText('12:00 PM')).toBeInTheDocument();
+      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getAllByText('2')).toHaveLength(3); // Appears multiple times in the activity table
+      expect(screen.getAllByText('3')).toHaveLength(4); // Appears multiple times in the activity table
     });
   });
 

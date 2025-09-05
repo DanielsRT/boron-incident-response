@@ -8,16 +8,6 @@ import {
   Clock,
   X 
 } from 'lucide-react';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
 
 interface StatsCardProps {
   title: string;
@@ -149,85 +139,41 @@ const AlertStatsOverview: React.FC<AlertStatsOverviewProps> = ({ stats }) => {
       <div className="bg-white rounded-lg shadow p-6 col-span-1 md:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">24h Activity</h3>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={stats.recent_activity} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="time" 
-                className="text-xs"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis 
-                className="text-xs"
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }}
-                labelStyle={{ color: '#374151' }}
-              />
-              <Legend />
-              
-              {/* Total alerts line */}
-              <Line 
-                type="monotone" 
-                dataKey="total" 
-                stroke="#3b82f6" 
-                strokeWidth={2}
-                name="Total Alerts"
-                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: '#3b82f6', strokeWidth: 2 }}
-              />
-              
-              {/* Critical alerts line */}
-              <Line 
-                type="monotone" 
-                dataKey="critical" 
-                stroke="#dc2626" 
-                strokeWidth={2}
-                name="Critical"
-                dot={{ fill: '#dc2626', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: '#dc2626', strokeWidth: 2 }}
-              />
-              
-              {/* High alerts line */}
-              <Line 
-                type="monotone" 
-                dataKey="high" 
-                stroke="#d97706" 
-                strokeWidth={2}
-                name="High"
-                dot={{ fill: '#d97706', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: '#d97706', strokeWidth: 2 }}
-              />
-              
-              {/* Medium alerts line */}
-              <Line 
-                type="monotone" 
-                dataKey="medium" 
-                stroke="#eab308" 
-                strokeWidth={2}
-                name="Medium"
-                dot={{ fill: '#eab308', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: '#eab308', strokeWidth: 2 }}
-              />
-              
-              {/* Low alerts line */}
-              <Line 
-                type="monotone" 
-                dataKey="low" 
-                stroke="#2563eb" 
-                strokeWidth={2}
-                name="Low"
-                dot={{ fill: '#2563eb', strokeWidth: 2, r: 3 }}
-                activeDot={{ r: 5, stroke: '#2563eb', strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {/* Simple Activity Table - Replace with proper chart when Recharts compatibility is resolved */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-6 gap-4 text-xs font-medium text-gray-500 border-b pb-2">
+              <div>Time</div>
+              <div>Total</div>
+              <div>Critical</div>
+              <div>High</div>
+              <div>Medium</div>
+              <div>Low</div>
+            </div>
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {stats.recent_activity.slice(0, 8).map((activity, index) => (
+                <div key={index} className="grid grid-cols-6 gap-4 text-sm py-2 border-b border-gray-100">
+                  <div className="text-gray-600">
+                    {new Date(activity.time).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                  <div className="font-medium text-blue-600">{activity.total}</div>
+                  <div className="font-medium text-red-600">{activity.critical}</div>
+                  <div className="font-medium text-orange-600">{activity.high}</div>
+                  <div className="font-medium text-yellow-600">{activity.medium}</div>
+                  <div className="font-medium text-green-600">{activity.low}</div>
+                </div>
+              ))}
+            </div>
+            {stats.recent_activity.length > 8 && (
+              <div className="text-center pt-2">
+                <span className="text-sm text-gray-500">
+                  Showing latest 8 entries of {stats.recent_activity.length} total
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

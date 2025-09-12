@@ -1,5 +1,11 @@
 #!/bin/bash
 
+disable_autoclose_prompt() {
+  echo "$1"
+  echo "Press ENTER to exit..."
+  read 
+}
+
 # Backend test script
 echo "Running backend tests..."
 
@@ -18,4 +24,5 @@ python -m pytest tests/integration/ -v
 echo "Running all tests with coverage..."
 python -m pytest tests/ -v --cov=app --cov-report=html --cov-report=term-missing
 
-echo "Backend tests completed!"
+
+disable_autoclose_prompt "Backend tests completed!"

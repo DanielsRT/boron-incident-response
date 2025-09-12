@@ -1,6 +1,12 @@
 #!/bin/bash
 # Frontend test script for Unix/Linux/macOS
 
+disable_autoclose_prompt() {
+  echo "$1"
+  echo "Press ENTER to exit..."
+  read 
+}
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -125,3 +131,5 @@ if [ -d "coverage" ]; then
 fi
 
 echo -e "${NC}Tests completed successfully! 🎉${NC}"
+
+disable_autoclose_prompt

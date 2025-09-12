@@ -9,7 +9,7 @@ import {
   cleanupTestEnvironment 
 } from '../../testUtils';
 
-// Mock recharts to avoid canvas issues in Jest
+// Mock recharts to avoid canvas issues in Jest and be React 19 compatible
 jest.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="responsive-container">{children}</div>
@@ -22,11 +22,38 @@ jest.mock('recharts', () => ({
   Line: ({ dataKey, stroke, name }: { dataKey: string; stroke: string; name: string }) => (
     <div data-testid={`line-${dataKey}`} data-stroke={stroke} data-name={name} />
   ),
-  XAxis: (props: any) => <div data-testid="x-axis" {...props} />,
-  YAxis: (props: any) => <div data-testid="y-axis" {...props} />,
-  CartesianGrid: (props: any) => <div data-testid="cartesian-grid" {...props} />,
-  Tooltip: (props: any) => <div data-testid="tooltip" {...props} />,
-  Legend: (props: any) => <div data-testid="legend" {...props} />,
+  XAxis: ({ dataKey, fontSize, stroke, tick }: { dataKey?: string; fontSize?: number; stroke?: string; tick?: any }) => (
+    <div 
+      data-testid="x-axis" 
+      data-datakey={dataKey}
+      data-font-size={fontSize}
+      data-stroke={stroke}
+      data-tick={typeof tick === 'object' ? JSON.stringify(tick) : tick}
+    />
+  ),
+  YAxis: ({ fontSize, stroke, tick }: { fontSize?: number; stroke?: string; tick?: any }) => (
+    <div 
+      data-testid="y-axis"
+      data-font-size={fontSize}
+      data-stroke={stroke}
+      data-tick={typeof tick === 'object' ? JSON.stringify(tick) : tick}
+    />
+  ),
+  CartesianGrid: ({ stroke, strokeDasharray }: { stroke?: string; strokeDasharray?: string }) => (
+    <div 
+      data-testid="cartesian-grid" 
+      data-stroke={stroke}
+      data-stroke-dasharray={strokeDasharray}
+    />
+  ),
+  Tooltip: ({ contentStyle, labelStyle }: { contentStyle?: any; labelStyle?: any }) => (
+    <div 
+      data-testid="tooltip"
+      data-content-style={typeof contentStyle === 'object' ? JSON.stringify(contentStyle) : contentStyle}
+      data-label-style={typeof labelStyle === 'object' ? JSON.stringify(labelStyle) : labelStyle}
+    />
+  ),
+  Legend: () => <div data-testid="legend" />,
 }));
 
 // Mock lucide-react icons
@@ -70,11 +97,11 @@ describe('AlertStatsOverview', () => {
 
       // Check critical alerts card
       expect(screen.getByText('Critical Alerts')).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(3); // Card + breakdown + activity table
+      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(2); // Card + breakdown
 
       // Check high priority card
       expect(screen.getByText('High Priority')).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(3); // Card + breakdown + activity table
+      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(2); // Card + breakdown
 
       // Check open alerts card
       expect(screen.getByText('Open Alerts')).toBeInTheDocument();
@@ -86,17 +113,17 @@ describe('AlertStatsOverview', () => {
 
       expect(screen.getByText('Severity Breakdown')).toBeInTheDocument();
       
-      // Check all severity levels are displayed (using getAllByText for items that appear in multiple places)
-      expect(screen.getAllByText('Critical')).toHaveLength(2); // Breakdown section + table header
-      expect(screen.getAllByText('High')).toHaveLength(2); // Breakdown section + table header  
-      expect(screen.getAllByText('Medium')).toHaveLength(2); // Breakdown section + table header
-      expect(screen.getAllByText('Low')).toHaveLength(2); // Breakdown section + table header
+      // Check all severity levels are displayed (only in breakdown section now)
+      expect(screen.getAllByText('Critical')).toHaveLength(1); // Only in breakdown section
+      expect(screen.getAllByText('High')).toHaveLength(1); // Only in breakdown section  
+      expect(screen.getAllByText('Medium')).toHaveLength(1); // Only in breakdown section
+      expect(screen.getAllByText('Low')).toHaveLength(1); // Only in breakdown section
 
       // Check values are displayed (using getAllByText for duplicates)
-      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(3); // Card + breakdown + activity table
-      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(3); // Card + breakdown + activity table
+      expect(screen.getAllByText(mockAlertStats.by_severity.critical.toString())).toHaveLength(2); // Card + breakdown
+      expect(screen.getAllByText(mockAlertStats.by_severity.high.toString())).toHaveLength(2); // Card + breakdown
       expect(screen.getByText(mockAlertStats.by_severity.medium.toString())).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_severity.low.toString())).toHaveLength(6); // Appears throughout the activity table
+      expect(screen.getAllByText(mockAlertStats.by_severity.low.toString())).toHaveLength(2); // Appears in both breakdown and false positive
     });
 
     it('renders status breakdown section', () => {
@@ -110,19 +137,26 @@ describe('AlertStatsOverview', () => {
       expect(screen.getByText('Resolved')).toBeInTheDocument();
       expect(screen.getByText('False Positive')).toBeInTheDocument();
 
-      // Check values are displayed (some appear in multiple places)
+      // Check values are displayed (only in breakdown sections now)
       expect(screen.getAllByText(mockAlertStats.by_status.open.toString())).toHaveLength(2); // Card + breakdown
       expect(screen.getByText(mockAlertStats.by_status.investigating.toString())).toBeInTheDocument();
-      expect(screen.getAllByText(mockAlertStats.by_status.resolved.toString())).toHaveLength(3); // Appears multiple times in activity table too
-      expect(screen.getAllByText(mockAlertStats.by_status.false_positive.toString())).toHaveLength(6); // Appears throughout the activity table
+      expect(screen.getByText(mockAlertStats.by_status.resolved.toString())).toBeInTheDocument(); // Only in breakdown
+      expect(screen.getAllByText(mockAlertStats.by_status.false_positive.toString())).toHaveLength(2); // Appears in both severity (low) and status breakdown
     });
 
-    it('renders 24h activity table', () => {
+    it('renders 24h activity chart', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
 
       expect(screen.getByText('24h Activity')).toBeInTheDocument();
-      expect(screen.getByText('Time')).toBeInTheDocument();
-      expect(screen.getByText('Total')).toBeInTheDocument();
+      
+      // Check that chart components are rendered
+      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('line-total')).toBeInTheDocument();
+      expect(screen.getByTestId('line-critical')).toBeInTheDocument();
+      expect(screen.getByTestId('line-high')).toBeInTheDocument();
+      expect(screen.getByTestId('line-medium')).toBeInTheDocument();
+      expect(screen.getByTestId('line-low')).toBeInTheDocument();
     });
   });
 
@@ -151,28 +185,51 @@ describe('AlertStatsOverview', () => {
     });
   });
 
-  describe('Activity Table', () => {
-    it('displays recent activity data in table format', () => {
+  describe('Activity Chart', () => {
+    it('displays recent activity data in chart format', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
       
-      // Check for table headers
-      expect(screen.getByText('Time')).toBeInTheDocument();
-      expect(screen.getByText('Total')).toBeInTheDocument();
-      expect(screen.getAllByText('Critical')).toHaveLength(2); // One in severity breakdown, one in table header
-      expect(screen.getAllByText('High')).toHaveLength(2); // One in severity breakdown, one in table header
-      expect(screen.getAllByText('Medium')).toHaveLength(2); // One in severity breakdown, one in table header
-      expect(screen.getAllByText('Low')).toHaveLength(2); // One in severity breakdown, one in table header
+      // Check for chart components
+      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('cartesian-grid')).toBeInTheDocument();
+      expect(screen.getByTestId('x-axis')).toBeInTheDocument();
+      expect(screen.getByTestId('y-axis')).toBeInTheDocument();
+      expect(screen.getByTestId('tooltip')).toBeInTheDocument();
+      expect(screen.getByTestId('legend')).toBeInTheDocument();
       
-      // Check for first row of data
-      expect(screen.getByText('04:00 AM')).toBeInTheDocument();
+      // Check for line components
+      expect(screen.getByTestId('line-total')).toBeInTheDocument();
+      expect(screen.getByTestId('line-critical')).toBeInTheDocument();
+      expect(screen.getByTestId('line-high')).toBeInTheDocument();
+      expect(screen.getByTestId('line-medium')).toBeInTheDocument();
+      expect(screen.getByTestId('line-low')).toBeInTheDocument();
     });
 
-    it('displays activity data with correct formatting', () => {
+    it('displays activity data with correct line colors', () => {
       render(<AlertStatsOverview stats={mockAlertStats} />);
 
-      // Check that numbers are displayed correctly
-      const criticalValues = screen.getAllByText('1');
-      expect(criticalValues.length).toBeGreaterThan(0);
+      // Check line colors
+      expect(screen.getByTestId('line-total')).toHaveAttribute('data-stroke', '#3b82f6');
+      expect(screen.getByTestId('line-critical')).toHaveAttribute('data-stroke', '#dc2626');
+      expect(screen.getByTestId('line-high')).toHaveAttribute('data-stroke', '#ea580c');
+      expect(screen.getByTestId('line-medium')).toHaveAttribute('data-stroke', '#ca8a04');
+      expect(screen.getByTestId('line-low')).toHaveAttribute('data-stroke', '#16a34a');
+    });
+
+    it('passes correct data to chart', () => {
+      render(<AlertStatsOverview stats={mockAlertStats} />);
+
+      const lineChart = screen.getByTestId('line-chart');
+      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
+      
+      expect(chartData).toHaveLength(mockAlertStats.recent_activity.length);
+      expect(chartData[0]).toHaveProperty('time');
+      expect(chartData[0]).toHaveProperty('total');
+      expect(chartData[0]).toHaveProperty('critical');
+      expect(chartData[0]).toHaveProperty('high');
+      expect(chartData[0]).toHaveProperty('medium');
+      expect(chartData[0]).toHaveProperty('low');
     });
   });
 
@@ -212,22 +269,21 @@ describe('AlertStatsOverview', () => {
 
       render(<AlertStatsOverview stats={emptyActivityStats} />);
 
-      // Check that activity section still renders with headers
+      // Check that activity section still renders with chart components
       expect(screen.getByText('24h Activity')).toBeInTheDocument();
-      expect(screen.getByText('Time')).toBeInTheDocument();
-      expect(screen.getByText('Total')).toBeInTheDocument();
+      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
+      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
       
-      // No data rows should be present
-      expect(screen.queryByText('04:00 AM')).not.toBeInTheDocument();
+      // Check that chart data is empty
+      const lineChart = screen.getByTestId('line-chart');
+      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
+      expect(chartData).toHaveLength(0);
     });
 
     it('handles single data point in recent activity', () => {
-      const noon = new Date();
-      noon.setHours(12, 0, 0, 0);
-      
       const singlePointStats = createMockAlertStats({
         recent_activity: [{
-          time: noon.toISOString(),
+          time: '12:00',
           total: 10,
           critical: 2,
           high: 3,
@@ -238,11 +294,22 @@ describe('AlertStatsOverview', () => {
 
       render(<AlertStatsOverview stats={singlePointStats} />);
 
-      // Check that the single data point is displayed correctly
-      expect(screen.getByText('12:00 PM')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
-      expect(screen.getAllByText('2')).toHaveLength(3); // Appears multiple times in the activity table
-      expect(screen.getAllByText('3')).toHaveLength(4); // Appears multiple times in the activity table
+      // Check that chart renders with single data point
+      expect(screen.getByText('24h Activity')).toBeInTheDocument();
+      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
+      
+      // Check that chart data contains the single point
+      const lineChart = screen.getByTestId('line-chart');
+      const chartData = JSON.parse(lineChart.getAttribute('data-chart-data') || '[]');
+      expect(chartData).toHaveLength(1);
+      expect(chartData[0]).toEqual({
+        time: '12:00 PM',
+        total: 10,
+        critical: 2,
+        high: 3,
+        medium: 3,
+        low: 2
+      });
     });
   });
 

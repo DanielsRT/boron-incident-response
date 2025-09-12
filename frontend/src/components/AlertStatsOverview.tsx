@@ -8,6 +8,16 @@ import {
   Clock,
   X 
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 interface StatsCardProps {
   title: string;
@@ -139,41 +149,89 @@ const AlertStatsOverview: React.FC<AlertStatsOverviewProps> = ({ stats }) => {
       <div className="bg-white rounded-lg shadow p-6 col-span-1 md:col-span-2">
         <h3 className="text-lg font-medium text-gray-900 mb-4">24h Activity</h3>
         <div className="h-64">
-          {/* Simple Activity Table - Replace with proper chart when Recharts compatibility is resolved */}
-          <div className="space-y-3">
-            <div className="grid grid-cols-6 gap-4 text-xs font-medium text-gray-500 border-b pb-2">
-              <div>Time</div>
-              <div>Total</div>
-              <div>Critical</div>
-              <div>High</div>
-              <div>Medium</div>
-              <div>Low</div>
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-2">
-              {stats.recent_activity.slice(0, 8).map((activity, index) => (
-                <div key={index} className="grid grid-cols-6 gap-4 text-sm py-2 border-b border-gray-100">
-                  <div className="text-gray-600">
-                    {new Date(activity.time).toLocaleTimeString('en-US', { 
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={stats.recent_activity.map(activity => ({
+                ...activity,
+                // Convert 24h format (HH:MM) to 12h format with AM/PM for display
+                time: activity.time.includes(':') 
+                  ? new Date(`1970-01-01T${activity.time}:00`).toLocaleTimeString('en-US', { 
                       hour: '2-digit', 
                       minute: '2-digit' 
-                    })}
-                  </div>
-                  <div className="font-medium text-blue-600">{activity.total}</div>
-                  <div className="font-medium text-red-600">{activity.critical}</div>
-                  <div className="font-medium text-orange-600">{activity.high}</div>
-                  <div className="font-medium text-yellow-600">{activity.medium}</div>
-                  <div className="font-medium text-green-600">{activity.low}</div>
-                </div>
-              ))}
-            </div>
-            {stats.recent_activity.length > 8 && (
-              <div className="text-center pt-2">
-                <span className="text-sm text-gray-500">
-                  Showing latest 8 entries of {stats.recent_activity.length} total
-                </span>
-              </div>
-            )}
-          </div>
+                    })
+                  : activity.time
+              }))}
+              margin={{
+                top: 5,
+                right: 30,
+                left: 20,
+                bottom: 5,
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="time" 
+                stroke="#6b7280"
+                fontSize={12}
+                tick={{ fill: '#6b7280' }}
+              />
+              <YAxis 
+                stroke="#6b7280"
+                fontSize={12}
+                tick={{ fill: '#6b7280' }}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+                labelStyle={{ color: '#374151' }}
+              />
+              <Legend />
+              <Line 
+                type="monotone" 
+                dataKey="total" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                name="Total"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="critical" 
+                stroke="#dc2626" 
+                strokeWidth={2}
+                dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
+                name="Critical"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="high" 
+                stroke="#ea580c" 
+                strokeWidth={2}
+                dot={{ fill: '#ea580c', strokeWidth: 2, r: 4 }}
+                name="High"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="medium" 
+                stroke="#ca8a04" 
+                strokeWidth={2}
+                dot={{ fill: '#ca8a04', strokeWidth: 2, r: 4 }}
+                name="Medium"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="low" 
+                stroke="#16a34a" 
+                strokeWidth={2}
+                dot={{ fill: '#16a34a', strokeWidth: 2, r: 4 }}
+                name="Low"
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

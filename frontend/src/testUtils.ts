@@ -37,7 +37,7 @@ export const mockAlertStats: AlertStats = {
   },
   recent_activity: [
     {
-      time: '2024-01-15T09:00:00Z',
+      time: '04:00',
       total: 3,
       critical: 1,
       high: 1,
@@ -45,7 +45,7 @@ export const mockAlertStats: AlertStats = {
       low: 0
     },
     {
-      time: '2024-01-15T10:00:00Z',
+      time: '05:00',
       total: 5,
       critical: 1,
       high: 2,

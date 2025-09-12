@@ -1,17 +1,25 @@
 import { alertsAPI } from '../../services/api';
 import { Alert, AlertStats } from '../../types';
 
-// Mock the api module
-jest.mock('../../services/api');
-
-// Type the mocked module
-const mockedAlertsAPI = alertsAPI as jest.Mocked<typeof alertsAPI>;
+// Mock the entire api module
+jest.mock('../../services/api', () => ({
+  alertsAPI: {
+    getAlerts: jest.fn(),
+    getStats: jest.fn(),
+    generateAlerts: jest.fn(),
+    getRecentEvents: jest.fn(),
+    updateAlertStatus: jest.fn(),
+  },
+}));
 
 describe('API Services', () => {
+  const mockAlertsAPI = alertsAPI as jest.Mocked<typeof alertsAPI>;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Setup mocks with default return values using correct types
+  });
+
+  describe('alertsAPI.getAlerts', () => {
     const mockAlert: Alert = {
       id: '1',
       title: 'Test Alert',
@@ -26,7 +34,35 @@ describe('API Services', () => {
       event_ids: ['event1'],
       raw_events: [{ test: 'data' }]
     };
-    
+
+    it('should fetch alerts without parameters', async () => {
+      mockAlertsAPI.getAlerts.mockResolvedValue([mockAlert]);
+
+      const result = await alertsAPI.getAlerts();
+
+      expect(alertsAPI.getAlerts).toHaveBeenCalledWith();
+      expect(result).toEqual([mockAlert]);
+    });
+
+    it('should fetch alerts with parameters', async () => {
+      mockAlertsAPI.getAlerts.mockResolvedValue([mockAlert]);
+
+      const params = { status: 'open', severity: 'high', limit: 10 };
+      const result = await alertsAPI.getAlerts(params);
+
+      expect(alertsAPI.getAlerts).toHaveBeenCalledWith(params);
+      expect(result).toEqual([mockAlert]);
+    });
+
+    it('should handle API errors', async () => {
+      const error = new Error('API Error');
+      mockAlertsAPI.getAlerts.mockRejectedValue(error);
+
+      await expect(alertsAPI.getAlerts()).rejects.toThrow('API Error');
+    });
+  });
+
+  describe('alertsAPI.getStats', () => {
     const mockStats: AlertStats = {
       total_alerts: 10,
       by_severity: {
@@ -52,59 +88,92 @@ describe('API Services', () => {
         }
       ]
     };
-    
-    mockedAlertsAPI.getAlerts.mockResolvedValue([mockAlert]);
-    mockedAlertsAPI.getStats.mockResolvedValue(mockStats);
-    mockedAlertsAPI.generateAlerts.mockResolvedValue({
-      message: 'Alerts generated successfully',
-      alert_count: 5
+
+    it('should fetch alert stats', async () => {
+      mockAlertsAPI.getStats.mockResolvedValue(mockStats);
+
+      const result = await alertsAPI.getStats();
+
+      expect(alertsAPI.getStats).toHaveBeenCalledWith();
+      expect(result).toEqual(mockStats);
     });
 
-    if (mockedAlertsAPI.updateAlertStatus) {
-      mockedAlertsAPI.updateAlertStatus.mockResolvedValue({
-        message: 'Alert updated successfully',
-        alert_id: '1',
-        new_status: 'investigating'
-      });
-    }
+    it('should handle stats API errors', async () => {
+      const error = new Error('Stats API Error');
+      mockAlertsAPI.getStats.mockRejectedValue(error);
+
+      await expect(alertsAPI.getStats()).rejects.toThrow('Stats API Error');
+    });
   });
 
-  it('should export alertsAPI object', () => {
-    expect(alertsAPI).toBeDefined();
-    expect(typeof alertsAPI.getAlerts).toBe('function');
-    expect(typeof alertsAPI.getStats).toBe('function');
-    expect(typeof alertsAPI.generateAlerts).toBe('function');
+  describe('alertsAPI.generateAlerts', () => {
+    it('should generate alerts', async () => {
+      const mockResponse = { message: 'Generated 5 alerts', alert_count: 5 };
+      mockAlertsAPI.generateAlerts.mockResolvedValue(mockResponse);
+
+      const result = await alertsAPI.generateAlerts();
+
+      expect(alertsAPI.generateAlerts).toHaveBeenCalledWith();
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle generate alerts API errors', async () => {
+      const error = new Error('Generate API Error');
+      mockAlertsAPI.generateAlerts.mockRejectedValue(error);
+
+      await expect(alertsAPI.generateAlerts()).rejects.toThrow('Generate API Error');
+    });
   });
 
-  it('should handle API calls and return expected types', async () => {
-    // Test that API functions return promises with the expected data
-    const alerts = await alertsAPI.getAlerts();
-    const stats = await alertsAPI.getStats();
-    const generateResult = await alertsAPI.generateAlerts();
-    
-    expect(alerts).toBeDefined();
-    expect(Array.isArray(alerts)).toBe(true);
-    expect(alerts.length).toBeGreaterThan(0);
-    
-    expect(stats).toBeDefined();
-    expect(typeof stats.total_alerts).toBe('number');
-    expect(stats.total_alerts).toBeGreaterThanOrEqual(0);
-    expect(stats.by_severity).toBeDefined();
-    expect(stats.by_status).toBeDefined();
-    
-    expect(generateResult).toBeDefined();
-    expect(generateResult.message).toBeDefined();
-    expect(typeof generateResult.alert_count).toBe('number');
+  describe('alertsAPI.getRecentEvents', () => {
+    it('should fetch recent events with default hours', async () => {
+      const mockEvents = [{ id: '1', event: 'test' }];
+      mockAlertsAPI.getRecentEvents.mockResolvedValue(mockEvents);
+
+      const result = await alertsAPI.getRecentEvents();
+
+      expect(alertsAPI.getRecentEvents).toHaveBeenCalledWith();
+      expect(result).toEqual(mockEvents);
+    });
+
+    it('should fetch recent events with custom hours', async () => {
+      const mockEvents = [{ id: '1', event: 'test' }];
+      mockAlertsAPI.getRecentEvents.mockResolvedValue(mockEvents);
+
+      const result = await alertsAPI.getRecentEvents(48);
+
+      expect(alertsAPI.getRecentEvents).toHaveBeenCalledWith(48);
+      expect(result).toEqual(mockEvents);
+    });
+
+    it('should handle recent events API errors', async () => {
+      const error = new Error('Events API Error');
+      mockAlertsAPI.getRecentEvents.mockRejectedValue(error);
+
+      await expect(alertsAPI.getRecentEvents()).rejects.toThrow('Events API Error');
+    });
   });
 
-  it('should call mocked functions correctly', () => {
-    // Test that functions are called (without making actual HTTP requests)
-    alertsAPI.getAlerts();
-    alertsAPI.getStats();
-    alertsAPI.generateAlerts();
-    
-    expect(mockedAlertsAPI.getAlerts).toHaveBeenCalledTimes(1);
-    expect(mockedAlertsAPI.getStats).toHaveBeenCalledTimes(1);
-    expect(mockedAlertsAPI.generateAlerts).toHaveBeenCalledTimes(1);
+  describe('alertsAPI.updateAlertStatus', () => {
+    it('should update alert status', async () => {
+      const mockResponse = { 
+        message: 'Status updated', 
+        alert_id: 'alert-123', 
+        new_status: 'resolved' 
+      };
+      mockAlertsAPI.updateAlertStatus.mockResolvedValue(mockResponse);
+
+      const result = await alertsAPI.updateAlertStatus('alert-123', 'resolved');
+
+      expect(alertsAPI.updateAlertStatus).toHaveBeenCalledWith('alert-123', 'resolved');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle update status API errors', async () => {
+      const error = new Error('Update API Error');
+      mockAlertsAPI.updateAlertStatus.mockRejectedValue(error);
+
+      await expect(alertsAPI.updateAlertStatus('alert-123', 'resolved')).rejects.toThrow('Update API Error');
+    });
   });
 });

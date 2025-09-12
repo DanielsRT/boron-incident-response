@@ -7,20 +7,25 @@ Testing guide for the Boron Incident Response System covering frontend (React/Ty
 
 ### Quick Commands
 ```bash
-cd frontend
+# Bash
+./run_tests.sh              # Full test suite
+./run_tests.sh --quick       # Quick tests only
+./run_tests.sh --coverage-only # Coverage tests only
+./run_tests.sh --verbose     # Verbose output
 
-# Run all tests
-npm test
+# PowerShell
+.\run_tests.ps1              # Full test suite
+.\run_tests.ps1 -Quick       # Quick tests only
+.\run_tests.ps1 -CoverageOnly # Coverage tests only
+.\run_tests.ps1 -Verbose     # Verbose output
 
-# Run with coverage
-npm run test:coverage
+# Batch (no parameters supported)
+run_tests.bat               # Full test suite
 
-# Run without watch mode
-npm test -- --watchAll=false
-
-# Automated scripts
-.\run_tests.bat    # Windows
-.\run_tests.ps1    # PowerShell
+# NPM Scripts
+npm run test:no-watch       # Quick clean test run
+npm run test:coverage       # Coverage analysis
+npm run test:ci             # CI-style filtered coverage
 ```
 
 ### Test Structure

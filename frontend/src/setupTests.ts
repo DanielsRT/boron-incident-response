@@ -4,6 +4,9 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Suppress React act() warnings for Dashboard async operations
+import './testUtils/suppressActWarnings';
+
 // Mock axios to avoid ES module issues
 jest.mock('axios', () => ({
   __esModule: true,

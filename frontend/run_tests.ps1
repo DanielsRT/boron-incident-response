@@ -71,13 +71,6 @@ Write-Host
 # Final summary
 Write-Banner "TEST EXECUTION COMPLETE!"
 
-Write-Host "✅ All Tests Passed Successfully:" -ForegroundColor Green
-Write-Host "   - 54/54 test suites passing (100% success rate)" -ForegroundColor White
-Write-Host "   - All React act() warnings resolved" -ForegroundColor White
-Write-Host "   - AlertStats type issues fixed" -ForegroundColor White
-Write-Host "   - Clean console output with no warnings" -ForegroundColor White
-Write-Host
-
 Write-Host "📊 Coverage Reports Generated:" -ForegroundColor Green
 Write-Host "   - Terminal output displayed above" -ForegroundColor White
 Write-Host "   - HTML report: coverage/lcov-report/index.html" -ForegroundColor White

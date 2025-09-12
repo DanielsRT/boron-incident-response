@@ -106,13 +106,6 @@ echo
 # Final summary
 print_banner "TEST EXECUTION COMPLETE!"
 
-echo -e "${GREEN}✅ All Tests Passed Successfully:${NC}"
-echo -e "   • 54/54 test suites passing (100% success rate)"
-echo -e "   • All React act() warnings resolved"
-echo -e "   • AlertStats type issues fixed"
-echo -e "   • Clean console output with no warnings"
-echo
-
 echo -e "${GREEN}📊 Coverage Reports Generated:${NC}"
 echo -e "   • Terminal output displayed above"
 echo -e "   • HTML report: coverage/lcov-report/index.html"

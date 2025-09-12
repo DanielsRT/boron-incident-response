@@ -42,12 +42,6 @@ echo ===============================================
 echo         FRONTEND TESTS COMPLETED!
 echo ===============================================
 echo.
-echo ^[32m✅ All Tests Passed Successfully:^[0m
-echo   - 54/54 test suites passing (100%% success rate)
-echo   - All React act() warnings resolved
-echo   - AlertStats type issues fixed
-echo   - Clean console output with no warnings
-echo.
 echo ^[32m📊 Coverage reports generated:^[0m
 echo   - Terminal output above
 echo   - HTML report: coverage/lcov-report/index.html

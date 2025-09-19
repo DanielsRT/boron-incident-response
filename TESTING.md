@@ -68,7 +68,7 @@ describe('AlertCard Component', () => {
 - No dependency on third-party charting libraries
 
 ### Current Status
-- **142 tests total** passing with **zero React DOM warnings**
+- **143 tests total** passing with **zero React DOM warnings**
 - **Test Coverage**: Available via jest with HTML reports in `coverage/`
 - **React 19 Compatibility**: Components updated to eliminate DOM prop warnings
 - **Clean Console Output**: No warnings or errors during test execution
@@ -104,9 +104,10 @@ pytest -v -s
 
 ### Current Status
 - **82 tests total** across unit and integration test suites
-- **Test Categories**: Unit tests (60), Integration tests (16), Model tests (6)
+- **Test Categories**: Unit tests (65), Integration tests (16), Model tests (1) 
 - **Coverage**: Available via pytest-cov with HTML reports in `htmlcov/`
-- **Mocking**: Comprehensive Elasticsearch and external service mocking
+- **Mocking**: Comprehensive Elasticsearch, Redis, and external service mocking
+- **Redis Integration**: Full Redis client mocking for persistence operations
 
 ### Test Structure
 ```
@@ -127,7 +128,7 @@ backend/
 
 ### Test Categories
 
-#### 1. Unit Tests (60 tests)
+#### 1. Unit Tests (65 tests)
 **AlertService Tests**: Elasticsearch operations, alert generation, status updates
 ```python
 def test_service_initialization_success(self, mock_elasticsearch):
@@ -136,11 +137,14 @@ def test_service_initialization_success(self, mock_elasticsearch):
     mock_elasticsearch.ping.assert_called_once()
 ```
 
-**LogService Tests**: Azure log fetching, token management, Redis operations
+**LogService Tests**: Azure log fetching, token management, Redis operations with comprehensive mocking
 ```python  
-def test_fetch_all_security_logs_success(self, mock_log_service):
+@patch('app.log.service.redis_client')
+def test_fetch_all_security_logs_success(self, mock_redis_client, mock_log_service):
     logs = mock_log_service.fetch_all_security_logs()
     assert len(logs) > 0
+    # Verify Redis timestamp saving is called
+    mock_redis_client.set.assert_called_once()
 ```
 
 **Model Tests**: Alert creation, validation, rule engine
@@ -170,7 +174,16 @@ class MockElasticsearch:
 ```
 
 **Azure Services**: Mocked HTTP requests and authentication
-**Redis Operations**: Mocked caching and persistence layer
+**Redis Operations**: Comprehensive Redis client mocking for persistence layer with proper @patch decorators
+```python
+# Redis operations are mocked at the service level
+@patch('app.log.service.redis_client')
+def test_save_last_fetch_time(self, mock_redis_client):
+    save_last_fetch_time()
+    mock_redis_client.set.assert_called_once_with(
+        LAST_FETCH_KEY, ANY, ex=REDIS_TTL_SECONDS
+    )
+```
 
 ## Environment Setup
 
@@ -212,6 +225,7 @@ docker-compose exec frontend npm test
 ### Backend
 **Database connection errors**: Ensure test database exists
 **Import errors**: Check PYTHONPATH and install with `pip install -e .`
+**Redis connection issues**: All Redis operations are properly mocked - no actual Redis instance needed for tests
 
 ### Docker
 **Elasticsearch users not created**: Check entrypoint script in `backend/scripts/backend/entrypoint`
@@ -244,4 +258,4 @@ docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 - Keep tests independent
 - Run tests before pushing changes
 
-Last updated: September 12, 2025
+Last updated: December 18, 2024

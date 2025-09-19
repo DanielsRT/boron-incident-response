@@ -80,6 +80,9 @@ def fetch_all_security_logs() -> List[Dict[str, Any]]:
     
         resp = httpx.post(url, headers=headers, json=body, timeout=60)
         resp.raise_for_status()
+
+        save_last_fetch_time(datetime.now(timezone.utc))
+
         data = resp.json()
         return flatten_response(data)
 

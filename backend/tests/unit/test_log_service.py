@@ -12,7 +12,7 @@ import socket
 from app.log.service import (
     token_expired, get_access_token, get_last_fetch_time, 
     save_last_fetch_time, fetch_all_security_logs, 
-    flatten_response, send_azure_logs_to_logstash,
+    flatten_response, send_logs_to_logstash,
     _token_cache, REDIS_KEY, QUERY_TEMPLATE
 )
 
@@ -128,11 +128,12 @@ class TestRedisOperations:
 class TestAzureLogFetching:
     """Test Azure Log Analytics integration."""
     
-    @patch('app.log.service.get_access_token')
-    @patch('app.log.service.get_last_fetch_time')
-    @patch('app.log.service.httpx.post')
+    @patch('app.log.service.redis_client')
     @patch('app.log.service.flatten_response')
-    def test_fetch_all_security_logs_success(self, mock_flatten, mock_post, mock_get_last_time, mock_get_token):
+    @patch('app.log.service.httpx.post')
+    @patch('app.log.service.get_last_fetch_time')
+    @patch('app.log.service.get_access_token')
+    def test_fetch_all_security_logs_success(self, mock_get_token, mock_get_last_time, mock_post, mock_flatten, mock_redis_client):
         """Test successful fetching of security logs."""
         # Setup mocks
         mock_get_token.return_value = "test-token"
@@ -141,6 +142,7 @@ class TestAzureLogFetching:
         
         mock_response = Mock()
         mock_response.json.return_value = {"tables": []}
+        mock_response.raise_for_status.return_value = None  # Explicitly set to None for success
         mock_post.return_value = mock_response
         
         mock_flatten.return_value = [{"event": "test"}]
@@ -163,12 +165,20 @@ class TestAzureLogFetching:
         )
         mock_response.raise_for_status.assert_called_once()
         mock_flatten.assert_called_once_with({"tables": []})
+        
+        # Verify that save_last_fetch_time is called through Redis
+        mock_redis_client.set.assert_called_once()
+        # Check that the call was made with the REDIS_KEY
+        call_args = mock_redis_client.set.call_args
+        assert call_args[0][0] == REDIS_KEY  # First argument should be the Redis key
+        
         assert result == [{"event": "test"}]
     
-    @patch('app.log.service.get_access_token')
-    @patch('app.log.service.get_last_fetch_time')
+    @patch('app.log.service.redis_client')
     @patch('app.log.service.httpx.post')
-    def test_fetch_all_security_logs_http_error(self, mock_post, mock_get_last_time, mock_get_token):
+    @patch('app.log.service.get_last_fetch_time')
+    @patch('app.log.service.get_access_token')
+    def test_fetch_all_security_logs_http_error(self, mock_get_token, mock_get_last_time, mock_post, mock_redis_client):
         """Test handling HTTP errors when fetching logs."""
         mock_get_token.return_value = "test-token"
         mock_get_last_time.return_value = datetime.now(timezone.utc)
@@ -177,11 +187,15 @@ class TestAzureLogFetching:
         
         with pytest.raises(httpx.HTTPError, match="Connection failed"):
             fetch_all_security_logs()
+            
+        # Verify save_last_fetch_time is not called on error (Redis set should not be called)
+        mock_redis_client.set.assert_not_called()
     
-    @patch('app.log.service.get_access_token')
-    @patch('app.log.service.get_last_fetch_time')
+    @patch('app.log.service.redis_client')
     @patch('app.log.service.httpx.post')
-    def test_fetch_all_security_logs_response_error(self, mock_post, mock_get_last_time, mock_get_token):
+    @patch('app.log.service.get_last_fetch_time')
+    @patch('app.log.service.get_access_token')
+    def test_fetch_all_security_logs_response_error(self, mock_get_token, mock_get_last_time, mock_post, mock_redis_client):
         """Test handling response errors when fetching logs."""
         mock_get_token.return_value = "test-token"
         mock_get_last_time.return_value = datetime.now(timezone.utc)
@@ -194,6 +208,9 @@ class TestAzureLogFetching:
         
         with pytest.raises(httpx.HTTPStatusError):
             fetch_all_security_logs()
+            
+        # Verify save_last_fetch_time is not called on error (Redis set should not be called)
+        mock_redis_client.set.assert_not_called()
 
 
 class TestResponseFlattening:
@@ -312,7 +329,7 @@ class TestLogstashIntegration:
             {"TimeGenerated": "2025-09-03T10:01:00Z", "Account": "user"}
         ]
         
-        send_azure_logs_to_logstash(logs)
+        send_logs_to_logstash(logs)
         
         # Verify SSL context creation
         mock_ssl_context.assert_called_once_with(
@@ -351,7 +368,7 @@ class TestLogstashIntegration:
         
         mock_ssl_context.return_value = mock_context
         
-        send_azure_logs_to_logstash([])
+        send_logs_to_logstash([])
         
         # Should still create connection but not send any data
         mock_create_connection.assert_called_once()

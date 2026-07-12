@@ -1,7 +1,6 @@
 # Security Incident Response Dashboard
 
-A security incident response system built with ELK Stack, Python FastAPI backend, and React frontend. This system implements a pluggable detection engine that analyzes Azure SecurityEvent logs, applies configurable detection rules, and generates normalized incidents stored in Elasticsearch through Logstash, providing a real-time React dashboard to monitor and respond to incidents.
-
+A distributed event-processing system that ingests Azure Security Events, asynchronously evaluates pluggable detection rules, stores normalized alerts in Elasticsearch through Logstash, exposes them through a FastAPI API, and presents an analyst workflow through a React client.
 
 
 <img width="1202" height="921" alt="Screenshot 2025-09-03 012451" src="https://github.com/user-attachments/assets/c2a58fcb-f7b8-4d03-80da-d1ef26ed7122" />

@@ -67,11 +67,6 @@ frontend/src/
 - Responsive table design
 - No dependency on third-party charting libraries
 
-### Current Status
-- **Full test coverage** of critical UI components and services with **zero React DOM warnings**
-- **Test Coverage**: Available via jest with HTML reports in `coverage/`
-- **React 19 Compatibility**: Components updated to eliminate DOM prop warnings
-- **Clean Console Output**: No warnings or errors during test execution
 
 ## Backend Testing
 
@@ -152,12 +147,6 @@ backend/
 **Mock Strategy**: Elasticsearch, Azure Services, and Redis are fully mocked to isolate tests
 - Prevents: Test dependencies on external infrastructure, unreliable test execution
 
-### Current Status
-- **Comprehensive test coverage** of critical incident response workflows
-- **Unit and Integration test suites** covering business logic and API contracts
-- **Coverage reports**: Available via pytest-cov in `htmlcov/`
-- **External service mocking**: Fully isolated tests with reproducible test data
-- **CI/CD ready**: Tests execute reliably without external dependencies
 
 ## Environment Setup
 

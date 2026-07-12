@@ -2,8 +2,6 @@
 
 A production-grade, distributed event-processing platform for security incident detection and response. Ingests high-volume Azure security telemetry, applies pluggable rule-based threat detection, normalizes alerts into Elasticsearch, and exposes insights through a responsive React dashboard.
 
-**Use Case**: Enterprise SOC teams monitoring Azure infrastructure for suspicious activity with low latency and horizontally scalable processing.
-
 <img width="1202" height="921" alt="Screenshot 2025-09-03 012451" src="https://github.com/user-attachments/assets/c2a58fcb-f7b8-4d03-80da-d1ef26ed7122" />
 
 ---
@@ -36,7 +34,7 @@ Azure Log Analytics → FastAPI Backend → Logstash Pipeline → Elasticsearch 
 | **Framework** | FastAPI | Type-safe async/await, automatic OpenAPI docs, minimal boilerplate—critical for maintaining alert SLAs |
 | **Task Queue** | Celery + Redis | Battle-tested distributed task orchestration; replaces simple threading for horizontal worker scaling |
 | **Search & Storage** | Elasticsearch | Inverted indices enable sub-100ms security queries; time-series optimization for retention policies |
-| **Caching** | Redis | In-memory cache for repeated threat intelligence lookups; supports pub/sub for real-time dashboard updates |
+| **Caching** | Redis | In-memory cache to watermark for real-time dashboard updates; message broker for Celery workers |
 | **Testing** | pytest + pytest-cov | 82 tests across unit/integration; CI-compatible coverage reporting |
 
 ### Frontend (TypeScript + React 19)
@@ -59,7 +57,6 @@ Azure Log Analytics → FastAPI Backend → Logstash Pipeline → Elasticsearch 
 
 ### Backend Features
 - **Azure Integration**: Queries SecurityEvent logs via Azure Log Analytics REST API with connection pooling
-- **Async Rule Engine**: Pluggable, stateless detection rules—extensible without code changes via rule repository pattern
 - **Real-time Processing**: Celery tasks decouple API responses from alert generation; sub-second latency achievable with Redis pub/sub
 - **REST API**: FastAPI exposes typed endpoints (`GET /alerts`, `POST /rules/test`); self-documenting via OpenAPI
 - **Observability Ready**: Structured logging for correlation IDs; ECS-compatible JSON output
@@ -174,7 +171,7 @@ cd backend && pytest --cov=app --cov-report=html
 ### Security Posture
 - TLS 1.3 for all inter-service communication
 - Azure Service Principal with least-privilege role (SecurityEventReader)
-- Redis password protection; Elasticsearch X-Pack authentication
+- Elasticsearch X-Pack authentication
 - API rate limiting per detection rule (prevent DOS on rule engine)
 
 ---

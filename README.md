@@ -1,6 +1,6 @@
 # Boron: Incident Response Dashboard
 
-A production-grade, distributed event-processing platform for security incident detection and response. Ingests high-volume Azure security telemetry, applies pluggable rule-based threat detection, normalizes alerts into Elasticsearch, and exposes insights through a responsive React dashboard.
+A distributed event-processing platform for security incident detection and response. Ingests high-volume Azure security telemetry, applies pluggable rule-based threat detection, normalizes alerts into Elasticsearch, and exposes insights through a responsive React dashboard.
 
 <img width="1202" height="921" alt="Screenshot 2025-09-03 012451" src="https://github.com/user-attachments/assets/c2a58fcb-f7b8-4d03-80da-d1ef26ed7122" />
 
@@ -181,7 +181,7 @@ cd backend && pytest --cov=app --cov-report=html
 | Decision | Alternative | Trade-off |
 |----------|-------------|-----------|
 | Celery + Redis | AWS Lambda + SQS | Stateful workers vs. vendor lock-in; chose flexibility |
-| Elasticsearch | DuckDB + S3 | OLAP speed vs. OLTP query freshness; chose OLTP for incident response |
+| Elasticsearch | DuckDB + S3 | OLAP speed vs. OLTP query freshness; chose OLTP for high refresh and low complex relational math requirements |
 | React + TypeScript | Vue.js + TS | Ecosystem maturity and job market; chose React |
 | Logstash | Custom ETL sidecar | Operational overhead vs. battle-tested tool; chose maintainability |
 

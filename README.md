@@ -181,7 +181,7 @@ cd backend && pytest --cov=app --cov-report=html
 | Decision | Alternative | Trade-off |
 |----------|-------------|-----------|
 | Celery + Redis | AWS Lambda + SQS | Stateful workers vs. vendor lock-in; chose flexibility |
-| Elasticsearch | DuckDB + S3 | OLAP speed vs. OLTP query freshness; chose OLTP for high refresh and low complex relational math requirements |
+| Elasticsearch | DuckDB + S3 | OLAP speed vs. OLTP query freshness; chose OLAP for high refresh and low complex relational math requirements |
 | React + TypeScript | Vue.js + TS | Ecosystem maturity and job market; chose React |
 | Logstash | Custom ETL sidecar | Operational overhead vs. battle-tested tool; chose maintainability |
 
